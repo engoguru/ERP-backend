@@ -71,7 +71,6 @@
 #           -e MONGO_URI=${{ secrets.MONGO_URI }} \
 #           -e PORT=${{ secrets.PORT }} \
 #           ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }}
-
 name: Backend-ERP
 
 on:
@@ -92,18 +91,21 @@ jobs:
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
       - name: Build Docker Image
-        run: docker build -t ngoguru/erp-backend:${{ github.sha }} .
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }} .
 
       - name: Push Docker Image
-        run: docker push ngoguru/erp-backend:${{ github.sha }}
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }}
 
   deploy:
     name: Deploy to EC2
-    needs: build
+    needs: build     # Only runs if build succeeds
     runs-on: self-hosted
     steps:
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
       - name: Pull Latest Docker Image
-        run: docker pull ngoguru/erp-backend:${{ github.sha }}
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }}
 
       - name: Remove Old Container
         run: |
@@ -123,4 +125,4 @@ jobs:
           -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
           -e MONGO_URI=${{ secrets.MONGO_URI }} \
           -e PORT=${{ secrets.PORT }} \
-          ngoguru/erp-backend:${{ github.sha }}
+          ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }}
