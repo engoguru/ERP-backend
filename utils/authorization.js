@@ -1,5 +1,7 @@
+import dotenv from "dotenv";
+dotenv.config();
 import jwt from "jsonwebtoken";
-
+    console.log( process.env.JWT_SECRET,"kk")
 export const authorization = async (req, res, next) => {
   try {
     // console.log("jjj")
@@ -12,7 +14,7 @@ export const authorization = async (req, res, next) => {
         message: "Unauthorized: Token missing",
       });
     }
-    console.log(token,"kk")
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = decoded; // attach decoded user to request
