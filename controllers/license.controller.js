@@ -241,7 +241,7 @@ export const licenseValidateToAdmin = async (req, res, next) => {
       { expiresIn: "24h" }
     );
 
-    res.cookie("companyKey", companyKey, {
+    res.cookie("companyAdminKey", companyKey, {
       httpOnly: true,              // cannot be accessed by JS
       secure: false, // HTTPS only in prod
       sameSite: "lax",           // CSRF protection
