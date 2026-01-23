@@ -1,10 +1,13 @@
+
+import dotenv from "dotenv";
+dotenv.config();
 import request from "supertest";
 import mongoose from "mongoose";
 import app from "../server.js";
 
 beforeAll(async () => {
     if (mongoose.connection.readyState === 0) {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGO_URI-2);
     }
 });
 
