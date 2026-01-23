@@ -283,12 +283,12 @@ export const loginEmployee = async (req, res, next) => {
     );
 
     // Set JWT in cookie
-    res.cookie("companyKey_keys", companyKey, {
-      httpOnly: true, // cannot be accessed by JS
-      secure: false, // set to true in production with HTTPS
-      sameSite: "lax",
-      maxAge: 48 * 60 * 60 * 1000, // 24 hours
-    });
+   res.cookie("companyAdminKey", companyKey, {
+  httpOnly: true,
+  secure: false,
+  sameSite: "none",
+  maxAge: 48 * 60 * 60 * 1000
+});
 
     // Success response
     return res.status(200).json({
