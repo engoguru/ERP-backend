@@ -12,7 +12,7 @@ export const authorization = async (req, res, next) => {
         message: "Unauthorized: Token missing",
       });
     }
-
+    console.log(token,"kk")
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = decoded; // attach decoded user to request
@@ -29,7 +29,7 @@ export const authorization = async (req, res, next) => {
 export const authorizationCompany = async (req, res, next) => {
   try {
     // Correct spelling + correct cookie name
-    const token = req.cookies?.companyKey;
+    const token = req.cookies?.companyAdminKey;
 
     if (!token) {
       return res.status(401).json({
@@ -37,7 +37,7 @@ export const authorizationCompany = async (req, res, next) => {
         message: "Unauthorized: Token missing",
       });
     }
-
+console.log(token,"kk")
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = decoded; // attach decoded user to request
