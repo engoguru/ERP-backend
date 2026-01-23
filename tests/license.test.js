@@ -4,7 +4,7 @@ import app from "../server.js";
 
 beforeAll(async () => {
     if (mongoose.connection.readyState === 0) {
-        await mongoose.connect("mongodb://127.0.0.1:27017/test_db");
+        await mongoose.connect(process.env.MONGO_URI);
     }
 });
 
