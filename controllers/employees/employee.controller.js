@@ -287,7 +287,7 @@ export const loginEmployee = async (req, res, next) => {
       httpOnly: true, // cannot be accessed by JS
       secure: false, // set to true in production with HTTPS
       sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 48 * 60 * 60 * 1000, // 24 hours
     });
 
     // Success response
@@ -355,3 +355,5 @@ export const viewOneEmployee = async (req, res) => {
     });
   }
 };
+
+

@@ -25,7 +25,6 @@ export const s3 = new S3Client({
 // }
 
 
-
 export async function generateUploadURL(key) {
   const command = new GetObjectCommand({
     Bucket: "ngo-guru-bucket",

@@ -40,9 +40,6 @@ export const leadCreate = async (req, res, next) => {
   }
 };
 
-
-
-
 export const leadUpdate = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -79,7 +76,6 @@ export const leadUpdate = async (req, res, next) => {
     return next(error);
   }
 };
-
 
 
 export const leadView = async (req, res, next) => {
@@ -125,11 +121,10 @@ export const leadView = async (req, res, next) => {
 };
 
 
-
-
 export const leadViewOne = async (req, res, next) => {
     try {
-             const skip = (page - 1) * itemsPerPage;
+      // const page=1
+            //  const skip = (page - 1) * itemsPerPage;
 
             const { employeeCode } = req.user;
         const { id } = req.params;
@@ -162,8 +157,6 @@ export const leadViewOne = async (req, res, next) => {
         return next(error);
     }
 };
-
-
 
 export const leadDelete = async (req, res, next) => {
     try {
