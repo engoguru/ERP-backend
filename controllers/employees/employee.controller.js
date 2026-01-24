@@ -116,7 +116,7 @@ export const viewEmployee = async (req, res, next) => {
 
 
 
-    const { employeeCode } = req.user;
+    const { employeeCode } = req?.user;
 
     const licenseData = await EmployeeModel
       .findOne({ employeeCode })
@@ -133,10 +133,10 @@ export const viewEmployee = async (req, res, next) => {
 
 
     // Calculate total documents
-    const total = await EmployeeModel.countDocuments({licenseId:id});
+    const total = await EmployeeModel.countDocuments({ licenseId: id });
 
     // Fetch data with pagination & sorting
-    const employees = await EmployeeModel.find({licenseId:id})
+    const employees = await EmployeeModel.find({ licenseId: id })
       .sort({ [sortBy]: order === "asc" ? 1 : -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -221,7 +221,7 @@ export const loginEmployee = async (req, res, next) => {
     }
 
     // Check license matches
-    if (checkEmployee.licenseId?.licenseId !== licenseId) {
+    if (checkEmployee?.licenseId?.licenseId !== licenseId) {
       return res.status(403).json({
         success: false,
         message: "License ID does not match",
@@ -233,7 +233,7 @@ export const loginEmployee = async (req, res, next) => {
 
 
     // Find matching permission from company data
-    const matchedPermission = companyConfig.permissions.find(
+    const matchedPermission = companyConfig?.permissions.find(
       (perm) =>
         perm.roleName?.trim().toLowerCase() === checkEmployee.role?.trim().toLowerCase() &&
         perm.department?.trim().toLowerCase() === checkEmployee.department?.trim().toLowerCase()
@@ -266,7 +266,7 @@ export const loginEmployee = async (req, res, next) => {
     // Generate JWT (24h)
     const companyKey = jwt.sign(
       {
-        id:checkEmployee._id,
+        id: checkEmployee._id,
         name: checkEmployee.name,
         employeeCode: checkEmployee.employeeCode,
         department: checkEmployee.department,
@@ -274,7 +274,7 @@ export const loginEmployee = async (req, res, next) => {
         email: checkEmployee.employeeEmail.email,
         contact: checkEmployee.employeeContact.contact,
         status: checkEmployee.status,
-        licenseId :checkEmployee.licenseId?._id,
+        licenseId: checkEmployee.licenseId?._id,
         permissionArray: permissionArray
 
       },
@@ -283,12 +283,12 @@ export const loginEmployee = async (req, res, next) => {
     );
 
     // Set JWT in cookie
-   res.cookie("companyAdminKey", companyKey, {
-  httpOnly: true,
-  secure: false,
-  sameSite: "none",
-  maxAge: 48 * 60 * 60 * 1000
-});
+    res.cookie("companyKey_keys", companyKey, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 48 * 60 * 60 * 1000
+    });
 
     // Success response
     return res.status(200).json({

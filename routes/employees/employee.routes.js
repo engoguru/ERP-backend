@@ -47,7 +47,7 @@ const uploadFilesMiddleware = async (req, res, next) => {
 
       // Generate signed URL
       const url = await generateUploadURL(key, file.mimetype);
-      console.log(url, "fdhv")
+      // console.log(url, "fdhv")
       fileKeys[fieldName] = { url, public_id: key };
     }
 
@@ -55,7 +55,7 @@ const uploadFilesMiddleware = async (req, res, next) => {
     // Merge uploaded files into existing req.body
     req.body = { ...req.body, ...fileKeys };
 
-    console.log(fileKeys, req.body, "gfhg")
+    // console.log(fileKeys, req.body, "gfhg")
     next();
   } catch (err) {
     console.error("File upload error:", err);
@@ -91,7 +91,7 @@ employeeRoute.post(
 
 employeeRoute.get("/reportingManager", searchEmployeeByName)
 
-employeeRoute.get("/view", authorization, viewEmployee);
+employeeRoute.get("/view",authorization,  viewEmployee);
 
 employeeRoute.get("/view/:id", viewOneEmployee)
 

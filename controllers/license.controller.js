@@ -86,7 +86,7 @@ export const licenseCreate = async (req, res, next) => {
         });
         return res.status(201).json({
             success: true,
-           data: newLicense
+            data: newLicense
         });
     } catch (error) {
         return next(error); // proper error handling
@@ -106,7 +106,7 @@ export const licenseUpdate = async (req, res, next) => {
         }
 
         const updatedLicense = await LicenseModel.findOneAndUpdate(
-            {  _id:licenseId  },
+            { _id: licenseId },
             updates,
             { new: true, runValidators: true }
         );
@@ -137,7 +137,7 @@ export const licenseViewOne = async (req, res, next) => {
             return next(error);
         }
 
-        const license = await LicenseModel.findOne({ _id:licenseId })
+        const license = await LicenseModel.findOne({ _id: licenseId })
             .lean()
             .exec();
 
@@ -192,93 +192,93 @@ export const licenseViewAll = async (req, res, next) => {
 
 
 export const licenseValidateToAdmin = async (req, res, next) => {
-  try {
-    const { companyEmail, companyPhone, licenseId } = req.body;
+    try {
+        const { companyEmail, companyPhone, licenseId } = req.body;
 
-    // validation
-    if (!companyEmail || !companyPhone || !licenseId) {
-      return res.status(400).json({
-        success: false,
-        message: "companyEmail, companyPhone and licenseId are required"
-      });
+        // validation
+        if (!companyEmail || !companyPhone || !licenseId) {
+            return res.status(400).json({
+                success: false,
+                message: "companyEmail, companyPhone and licenseId are required"
+            });
+        }
+
+        // find license
+        const license = await LicenseModel.findOne({
+            licenseId: licenseId,
+            "companyEmail.email": companyEmail,
+            "companyPhone.phone": companyPhone
+        });
+
+        if (!license) {
+            return res.status(404).json({
+                success: false,
+                message: "License not found or details do not match"
+            });
+        }
+
+        // check email or phone verified
+        const isEmailVerified = license.companyEmail?.isVerified;
+        const isPhoneVerified = license.companyPhone?.isVerified;
+
+        if (!isEmailVerified && !isPhoneVerified) {
+            return res.status(403).json({
+                success: false,
+                message: "Email or phone must be verified"
+            });
+        }
+
+        // mock OTP (test only)
+        const testOtp = "123456";
+
+        // generate JWT (24h)
+        const companyKey = jwt.sign(
+            {
+                licenseId: license._id,
+                companyName: license.companyName
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: "24h" }
+        );
+
+        res.cookie("companyAdminKey", companyKey, {
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax",
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
+
+        return res.status(200).json({
+            success: true,
+            message: "OTP sent (test mode)",
+            testOtp
+        });
+
+    } catch (error) {
+        console.error("licenseValidateToAdmin error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
     }
-
-    // find license
-    const license = await LicenseModel.findOne({
-      licenseId: licenseId,
-      "companyEmail.email": companyEmail,
-      "companyPhone.phone": companyPhone
-    });
-
-    if (!license) {
-      return res.status(404).json({
-        success: false,
-        message: "License not found or details do not match"
-      });
-    }
-
-    // check email or phone verified
-    const isEmailVerified = license.companyEmail?.isVerified;
-    const isPhoneVerified = license.companyPhone?.isVerified;
-
-    if (!isEmailVerified && !isPhoneVerified) {
-      return res.status(403).json({
-        success: false,
-        message: "Email or phone must be verified"
-      });
-    }
-
-    // mock OTP (test only)
-    const testOtp = "123456";
-
-    // generate JWT (24h)
-    const companyKey = jwt.sign(
-      {
-        licenseId: license._id,
-        companyName: license.companyName
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
-
- res.cookie("companyAdminKey", companyKey, {
-  httpOnly: true,
-  secure: false,
-  sameSite: "none",
-  maxAge: 24 * 60 * 60 * 1000
-});
-
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP sent (test mode)",
-      testOtp
-    });
-
-  } catch (error) {
-    console.error("licenseValidateToAdmin error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
-  }
 };
 
 
 // here we use aws lambda
-export const licenseCheckExpire=async()=>{
+export const licenseCheckExpire = async () => {
     try {
-        
+
     } catch (error) {
-        
+
     }
 }
 // here we use aws lambda
-export const licenseNotifyExpire=async()=>{
+export const licenseNotifyExpire = async () => {
     try {
-        
+
     } catch (error) {
-        
+
     }
 }
 
@@ -292,7 +292,7 @@ export const licenseDelete = async (req, res, next) => {
             return next(error);
         }
 
-        const result = await LicenseModel.deleteOne({  _id:licenseId  });
+        const result = await LicenseModel.deleteOne({ _id: licenseId });
 
         if (result.deletedCount === 0) {
             const error = new Error("License not found");

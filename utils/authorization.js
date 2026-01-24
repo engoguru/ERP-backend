@@ -39,7 +39,7 @@ export const authorizationCompany = async (req, res, next) => {
         message: "Unauthorized: Token missing",
       });
     }
-console.log(token,"kk")
+// console.log(token,"kk")
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = decoded; // attach decoded user to request

@@ -139,16 +139,16 @@ export const companyConfigureViewOne = async (req, res, next) => {
   try {
     const { role, employeeCode } = req.user;
 
-    if (role !== "Admin") {
-      const error = new Error("not allowed");
-      error.statusCode = 400;
-      return next(error);
-    }
+    // if (role !== "Admin") {
+    //   const error = new Error("not allowed");
+    //   error.statusCode = 400;
+    //   return next(error);
+    // }
 
     const licenseData = await EmployeeModel
       .findOne({ employeeCode })
       .populate("licenseId", "licenseId _id");
-      console.log(licenseData,"pp")
+      // console.log(licenseData,"pp")
 
     if (!licenseData || !licenseData.licenseId) {
       const error = new Error("License not found");

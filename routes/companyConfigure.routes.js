@@ -23,17 +23,17 @@ const companyConfigureValidate=(req, res, next)=>{
 }
 
 
-companyConfigureRoutes.post("/create" ,authorization,roleAllowed("Admin"), companyConfigureValidate,companyConfigureCreate)
+companyConfigureRoutes.post("/create" ,authorization, companyConfigureValidate,companyConfigureCreate)
 
 
-companyConfigureRoutes.get("/view" ,authorization,roleAllowed("Admin"),companyConfigureViewOne)
+companyConfigureRoutes.get("/view" ,authorization,companyConfigureViewOne)
 
 
 
 companyConfigureRoutes.get("/viewaLL" ,companyConfigureViewAll)
 
 
-companyConfigureRoutes.put("/update" ,authorization,roleAllowed("Admin"), companyConfigureValidate,companyConfigureUpdate)
+companyConfigureRoutes.put("/update" , authorization,companyConfigureValidate,companyConfigureUpdate)
 
 
 companyConfigureRoutes.get("/viewDetail/id" ,companyConfigureViewByLicense)

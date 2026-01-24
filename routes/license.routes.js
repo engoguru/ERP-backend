@@ -51,7 +51,7 @@ licenseRoutes.get("/get",authorizationCompany, (req, res) => {
   try {
     // req.user contains decoded info from JWT
     const user = req.user;
-
+// console.log(user)
     return res.status(200).json({
       success: true,
       message: "User details fetched successfully",

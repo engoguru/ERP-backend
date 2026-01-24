@@ -4,7 +4,6 @@ const leadSchema = new mongoose.Schema({
     licenseId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "LicenseTable", // reference to your License model
-         unique: true,
            required: true
     },
   version: {

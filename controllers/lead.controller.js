@@ -79,45 +79,55 @@ export const leadUpdate = async (req, res, next) => {
 
 
 export const leadView = async (req, res, next) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const itemsPerPage = parseInt(req.query.itemsPerPage) || 50;
-        const skip = (page - 1) * itemsPerPage;
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const itemsPerPage = parseInt(req.query.itemsPerPage) || 50;
+    const skip = (page - 1) * itemsPerPage;
 
-            const { employeeCode } = req.user;
+    const { employeeCode, id: employeeId, role } = req.user;
 
+    // Get licenseId for logged-in employee
     const licenseData = await EmployeeModel
       .findOne({ employeeCode })
       .populate("licenseId", "_id")
       .lean();
 
     if (!licenseData?.licenseId) {
-      const error = new Error("License not found");
-      return next(error);
+      return next(new Error("License not found"));
     }
 
-    const id = licenseData.licenseId._id;
+    const licenseId = licenseData.licenseId._id;
 
-        const total = await leadModel.countDocuments();
+    // Base query
+    let query = { licenseId };
 
-        const leads = await leadModel
-            .find({licenseId:id})
-            .skip(skip)
-            .limit(itemsPerPage)
-            .lean()
-            .exec();
-
-        return res.status(200).json({
-            success: true,
-            page,
-            itemsPerPage,
-            total,
-            totalPages: Math.ceil(total / itemsPerPage),
-            data: leads
-        });
-    } catch (error) {
-        return next(error);
+    // Role-based filtering
+    if (role !== "Admin") {
+      query.whoAssignedwho = {
+        $elemMatch: { assignedTo: employeeId }
+      };
     }
+
+    const total = await leadModel.countDocuments(query);
+
+    const leads = await leadModel
+      .find(query)
+      .skip(skip)
+      .limit(itemsPerPage)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      page,
+      itemsPerPage,
+      total,
+      totalPages: Math.ceil(total / itemsPerPage),
+      data: leads
+    });
+
+  } catch (error) {
+    return next(error);
+  }
 };
 
 

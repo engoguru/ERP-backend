@@ -97,7 +97,7 @@ leadRoute.get("/view/:id",authorization, leadViewOne);
 
 leadRoute.put(
   "/update/:id",
-  authorization,
+authorization,
  
   leadUpdate               // controller
 );

@@ -119,7 +119,7 @@ const employeeSchema = new mongoose.Schema(
     bankDetail: { type: [bankSchema], default: [] },
 
     // License
-    licenseId: { type: mongoose.Schema.Types.ObjectId, ref: "LicenseTable", unique: true, required: true }
+    licenseId: { type: mongoose.Schema.Types.ObjectId, ref: "LicenseTable", required: true }
   },
   { timestamps: true }
 );
