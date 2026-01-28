@@ -5,13 +5,14 @@ import { eventSchemaJoi } from "../../middlewares/employees/event.joivalidateer.
 const eventRoute=express.Router();
 // middleware/validate.js
 import mongoose from "mongoose";
+import { authorization } from "../../utils/authorization.js";
 
 
 const validate = (req,res,next)  => {
   try {
     // Assign string IDs for validation
-    req.body.licenseId = "6964954a570d47c5d6edbe95";
-    req.body.employeeId = "696b7bf0360a9259fb1248e7";
+    req.body.licenseId =req.user.licenseId;
+    req.body.employeeId = req.user.id;
 
     console.log("Middleware body:", req.body);
 
@@ -32,10 +33,10 @@ const validate = (req,res,next)  => {
 
 
 
-eventRoute.post("/create",validate,eventCreate)
+eventRoute.post("/create",authorization,validate,eventCreate)
 
 eventRoute.put("/update/:id", validate,eventUpdate)
-eventRoute.get("/view",eventView)
+eventRoute.get("/view",authorization,eventView)
 eventRoute.get("/viewAll",eventViewAll)
 eventRoute.get("/viewOne/:id",eventViewOne)
 eventRoute.delete("/delete/:id",eventdelete)

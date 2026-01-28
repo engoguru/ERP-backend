@@ -97,8 +97,9 @@ export const eventViewOne = async (req, res, next) => {
 // view  company specific 
 export const eventView = async (req, res, next) => {
     try {
-        const { page = 1, limit = 10, licenseId } = req.query;
 
+        const { page = 1, limit = 10 } = req.query;
+        const licenseId=req.user.licenseId
         const filter = {};
         if (licenseId && isValidObjectId(licenseId)) {
             filter.licenseId = licenseId;
@@ -106,7 +107,7 @@ export const eventView = async (req, res, next) => {
 
         const events = await eventModel
             .find(filter)
-            .select("eventName startDate endDate totaldays licenseId")
+            .select("eventName startDate endDate totaldays description licenseId")
             .skip((page - 1) * limit)
             .limit(Number(limit))
             .sort({ startDate: -1 });

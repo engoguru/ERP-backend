@@ -15,7 +15,7 @@ import { generateUploadURL,s3 } from "../config/awsS3.js";
  */
 export const companyCreate = async (req, res) => {
   try {
-    console.log(req.body,"jyoiregjh")
+    // console.log(req.body,"jyoiregjh")
     // Simply save req.body to MongoDB
     const savedCompany = await companyModel.create(req.body);
 
