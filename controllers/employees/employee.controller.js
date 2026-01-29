@@ -241,15 +241,15 @@ export const loginEmployee = async (req, res, next) => {
       });
     }
 
-         const clientIp = getClientIp(req);
-    const isAllowed = await checkIpAllowed(checkEmployee?.licenseId?._id, clientIp);
+    //      const clientIp = getClientIp(req);
+    // const isAllowed = await checkIpAllowed(checkEmployee?.licenseId?._id, clientIp);
 
-    if (!isAllowed) {
-      return res.status(403).json({
-        success: false,
-        message: "Login blocked: IP address not allowed",
-      });
-    }
+    // if (!isAllowed) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Login blocked: IP address not allowed",
+    //   });
+    // }
 
     // Check license matches
     if (checkEmployee?.licenseId?.licenseId !== licenseId) {
