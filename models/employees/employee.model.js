@@ -13,6 +13,8 @@ const salaryStructureSchema = new mongoose.Schema(
     // Deductions
     pf: { type: Number, default: 0 },
     esi: { type: Number, default: 0 },
+     esiCode: { type: String, default: "0" },  // use string to avoid precision loss
+    pfCode: { type: String, default: "0" },
     professionalTax: { type: Number, default: 0 },
     gratuity: { type: Number, default: 0 },
 
@@ -69,7 +71,54 @@ const employeeSchema = new mongoose.Schema(
       contact: { type: String, required: true, match: /^\+?[0-9]{7,15}$/ },
       isVerified: { type: Boolean, default: false }
     },
+    emgContact: {
+      contact: {
+        type: String,
+        required: true,
+        match: /^\+?[0-9]{7,15}$/ // phone number
+      },
+      relation: {
+        type: String,
+        required: true,
+        enum: [
+          'Father',
+          'Mother',
+          'Spouse',
+          'Sibling',
+          'Friend',
+          'Guardian',
+          'Other'
+        ]
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      }
+    }
+    ,
+  dob: {
+  type: Date,
+  required: true,
+  validate: {
+    validator: function (value) {
+      return value <= new Date();
+    },
+    message: 'Date of birth cannot be in the future'
+  }
+}
+,
 
+    bloodGroup: {
+      type: String,
+      required: true,
+      enum: [
+        'A+', 'A-',
+        'B+', 'B-',
+        'AB+', 'AB-',
+        'O+', 'O-'
+      ]
+    }
+    ,
     // Role & Status
     role: { type: String, required: true, trim: true },
     status: { type: String, enum: ["ACTIVE", "INACTIVE"], default: "ACTIVE" },
@@ -86,8 +135,10 @@ const employeeSchema = new mongoose.Schema(
     employeeDescription: String,
 
     // Identification
-    pan: { url: String, public_id: String },
-    aadhar: { url: String, public_id: String },
+    pan: [{ url: String, public_id: String }],
+    panNumber: {},
+    aadhar: [{ url: String, public_id: String }],
+    aadharNumber: {},
 
     // Address
     permanentAddress: String,

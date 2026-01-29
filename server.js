@@ -16,6 +16,7 @@ import employeeRoute from "./routes/employees/employee.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import { authorization } from "./utils/authorization.js";
 import { roleAllowed } from "./utils/roleAllowed.js";
+import ipRoutes from "./routes/employees/ip.routes.js";
 
 dotenv.config();
 
@@ -66,6 +67,8 @@ app.use("/api/payroll", payrollRoute);
 app.use("/api/attendance", attendanceRoute);
 app.use("/api/event", eventRoute);
 app.use("/api/employee", employeeRoute);
+
+app.use("/api/ip",ipRoutes)
 
 // ────────── ERROR HANDLER ──────────
 app.use(errorHandler);

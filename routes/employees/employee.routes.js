@@ -24,38 +24,105 @@ const validate = (req, res, next) => {
 };
 
 // ---------------- S3 Upload Middleware ----------------
-const uploadFilesMiddleware = async (req, res, next) => {
-  try {
+// const uploadFilesMiddleware = async (req, res, next) => {
+//   try {
 
     
+//     const files = req.files || {};
+//     const fileKeys = {};
+
+//     for (const fieldName of Object.keys(files)) {
+//       const file = files[fieldName][0]; // only first file per field
+//       const key = `employees/${req.body.employeeCode}/${Date.now()}-${file.originalname}`;
+
+//       // Upload file to S3
+//       await s3.send(
+//         new PutObjectCommand({
+//           Bucket: "ngo-guru-bucket",
+//           Key: key,
+//           Body: file.buffer,
+//           ContentType: file.mimetype,
+//         })
+//       );
+
+//       // Generate signed URL
+//       const url = await generateUploadURL(key, file.mimetype);
+//       // console.log(url, "fdhv")
+//       fileKeys[fieldName] = { url, public_id: key };
+//     }
+
+//     // Attach file URLs to request body
+//     // Merge uploaded files into existing req.body
+//     req.body = { ...req.body, ...fileKeys };
+
+//     // console.log(fileKeys, req.body, "gfhg")
+//     next();
+//   } catch (err) {
+//     console.error("File upload error:", err);
+//     return res.status(500).json({
+//       message: "Failed to upload files",
+//       error: err.message,
+//     });
+//   }
+// };
+const uploadFilesMiddleware = async (req, res, next) => {
+  try {
     const files = req.files || {};
     const fileKeys = {};
 
     for (const fieldName of Object.keys(files)) {
-      const file = files[fieldName][0]; // only first file per field
-      const key = `employees/${req.body.employeeCode}/${Date.now()}-${file.originalname}`;
+      const uploadedFiles = files[fieldName]; // array of files
 
-      // Upload file to S3
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: "ngo-guru-bucket",
-          Key: key,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-        })
-      );
+      // If only one file (profilePic)
+      if (uploadedFiles.length === 1) {
+        const file = uploadedFiles[0];
+        const key = `employees/${req.body.employeeCode}/${Date.now()}-${file.originalname}`;
 
-      // Generate signed URL
-      const url = await generateUploadURL(key, file.mimetype);
-      // console.log(url, "fdhv")
-      fileKeys[fieldName] = { url, public_id: key };
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: "ngo-guru-bucket",
+            Key: key,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+          })
+        );
+
+        const url = await generateUploadURL(key, file.mimetype);
+
+        fileKeys[fieldName] = {
+          url,
+          public_id: key
+        };
+      } 
+      // If multiple files (pan, aadhar)
+      else {
+        fileKeys[fieldName] = [];
+
+        for (const file of uploadedFiles) {
+          const key = `employees/${req.body.employeeCode}/${Date.now()}-${file.originalname}`;
+
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: "ngo-guru-bucket",
+              Key: key,
+              Body: file.buffer,
+              ContentType: file.mimetype,
+            })
+          );
+
+          const url = await generateUploadURL(key, file.mimetype);
+
+          fileKeys[fieldName].push({
+            url,
+            public_id: key
+          });
+        }
+      }
     }
 
-    // Attach file URLs to request body
-    // Merge uploaded files into existing req.body
+    // Merge uploaded files into req.body
     req.body = { ...req.body, ...fileKeys };
 
-    // console.log(fileKeys, req.body, "gfhg")
     next();
   } catch (err) {
     console.error("File upload error:", err);
@@ -67,15 +134,14 @@ const uploadFilesMiddleware = async (req, res, next) => {
 };
 
 
-
-
 // ---------------- Fields ----------------
 // Correct fields for employee files
 const uploadFields = multerUploader.fields([
   { name: "profilePic", maxCount: 1 },
-  { name: "pan", maxCount: 1 },
-  { name: "aadhar", maxCount: 1 },
+  { name: "pan", maxCount: 5 },      // array
+  { name: "aadhar", maxCount: 5 },   // array
 ]);
+
 
 
 

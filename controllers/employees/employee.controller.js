@@ -7,8 +7,23 @@ import { generateEmployeeCode } from "../../utils/generateEmployeeCode.js";
 
 import jwt from "jsonwebtoken";
 import companyConfigureModel from "../../models/companyConfigure.model.js";
+import { checkIpAllowed } from "../../utils/verifyNetwork.js";
+// import { verifyNetwork } from "../../utils/verifyNetwork.js";
 
 
+const getClientIp = (req) => {
+  let ip =
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.socket.remoteAddress;
+
+  // Normalize IPv4 mapped IPv6 addresses
+  if (ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
+
+  // Remove zone index if present (like %20)
+  ip = ip.split("%")[0];
+
+  return ip;
+};
 
 
 export const createEmployee = async (req, res) => {
@@ -34,6 +49,10 @@ export const createEmployee = async (req, res) => {
     if (req.body.bankDetail && typeof req.body.bankDetail === "string") {
       req.body.bankDetail = JSON.parse(req.body.bankDetail);
     }
+    if (req.body.emgContact && typeof req.body.emgContact === "string") {
+      req.body.emgContact = JSON.parse(req.body.emgContact);
+    }
+
 
     // // Validate and convert ObjectIds
     // if (req.body.reportingManager) {
@@ -207,6 +226,8 @@ export const loginEmployee = async (req, res, next) => {
       });
     }
 
+
+
     // Find employee under license
     const checkEmployee = await EmployeeModel.findOne({
       "employeeEmail.email": email,
@@ -217,6 +238,16 @@ export const loginEmployee = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: "Employee not found",
+      });
+    }
+
+         const clientIp = getClientIp(req);
+    const isAllowed = await checkIpAllowed(checkEmployee?.licenseId?._id, clientIp);
+
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: "Login blocked: IP address not allowed",
       });
     }
 
@@ -331,12 +362,26 @@ export const viewOneEmployee = async (req, res) => {
     }
 
     // 🔑 Generate fresh presigned URLs for all files
-    if (employee.pan?.public_id) {
-      employee.pan.url = await generateUploadURL(employee.pan.public_id);
+    if (Array.isArray(employee.pan)) {
+      await Promise.all(
+        employee.pan.map(async (pan) => {
+          if (pan?.public_id) {
+            pan.url = await generateUploadURL(pan.public_id);
+          }
+        })
+      );
     }
-    if (employee.aadhar?.public_id) {
-      employee.aadhar.url = await generateUploadURL(employee.aadhar.public_id);
+
+    if (Array.isArray(employee.aadhar)) {
+      await Promise.all(
+        employee.aadhar.map(async (aadhar) => {
+          if (aadhar?.public_id) {
+            aadhar.url = await generateUploadURL(aadhar.public_id);
+          }
+        })
+      );
     }
+
     if (employee.profilePic?.public_id) {
       employee.profilePic.url = await generateUploadURL(employee.profilePic.public_id);
     }

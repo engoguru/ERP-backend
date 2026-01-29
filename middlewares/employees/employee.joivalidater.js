@@ -31,27 +31,27 @@ export const employeeSchemaJoi = Joi.object({
   }).optional(),
 
   // Salary Structure
-  salaryStructure: Joi.object({
-    ctc: Joi.number().required(),
+  // salaryStructure: Joi.object({
+  //   ctc: Joi.number().required(),
 
-    // Earnings
-    basic: Joi.number().default(0),
-    hra: Joi.number().default(0),
-    otherAllowance: Joi.number().default(0),
+  //   // Earnings
+  //   basic: Joi.number().default(0),
+  //   hra: Joi.number().default(0),
+  //   otherAllowance: Joi.number().default(0),
 
-    // Deductions
-    pf: Joi.number().default(0),
-    esi: Joi.number().default(0),
-    professionalTax: Joi.number().default(0),
-    gratuity: Joi.number().default(0),
+  //   // Deductions
+  //   pf: Joi.number().default(0),
+  //   esi: Joi.number().default(0),
+  //   professionalTax: Joi.number().default(0),
+  //   gratuity: Joi.number().default(0),
 
-    // Totals (calculated backend)
-    grossSalary: Joi.number().default(0),
-    totalDeduction: Joi.number().default(0),
-    netSalary: Joi.number().default(0),
+  //   // Totals (calculated backend)
+  //   grossSalary: Joi.number().default(0),
+  //   totalDeduction: Joi.number().default(0),
+  //   netSalary: Joi.number().default(0),
 
-    effectiveFrom: Joi.date().required()
-  }).required(),
+  //   effectiveFrom: Joi.date().required()
+  // }).required(),
 
   // HR Details
   shiftDetail: Joi.object({
