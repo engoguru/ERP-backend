@@ -27,7 +27,7 @@ const validate = (req, res, next) => {
 // const uploadFilesMiddleware = async (req, res, next) => {
 //   try {
 
-    
+
 //     const files = req.files || {};
 //     const fileKeys = {};
 
@@ -88,12 +88,12 @@ const uploadFilesMiddleware = async (req, res, next) => {
         );
 
         const url = await generateUploadURL(key, file.mimetype);
-
+        // console.log(fieldName, url)
         fileKeys[fieldName] = {
           url,
           public_id: key
         };
-      } 
+      }
       // If multiple files (pan, aadhar)
       else {
         fileKeys[fieldName] = [];
@@ -122,7 +122,7 @@ const uploadFilesMiddleware = async (req, res, next) => {
 
     // Merge uploaded files into req.body
     req.body = { ...req.body, ...fileKeys };
-
+    // console.log(req.body.profilePic, req.body.pan, "opop", req.body)
     next();
   } catch (err) {
     console.error("File upload error:", err);
@@ -132,6 +132,59 @@ const uploadFilesMiddleware = async (req, res, next) => {
     });
   }
 };
+
+
+
+// const uploadFilesMiddleware = async (req, res, next) => {
+//   try {
+//     const files = req.files || {}; // multer puts files here
+//     const fileKeys = {};
+
+//     // Loop through all file fields
+//     for (const fieldName of Object.keys(files)) {
+//       const uploadedFiles = files[fieldName];
+//       fileKeys[fieldName] = [];
+
+//       for (const file of uploadedFiles) {
+//         // Construct a unique S3 key
+//         const key = `employees/${req.body.employeeCode}/${Date.now()}-${file.originalname}`;
+
+//         // Upload to S3
+//         await s3.send(
+//           new PutObjectCommand({
+//             Bucket: "ngo-guru-bucket",
+//             Key: key,
+//             Body: file.buffer,
+//             ContentType: file.mimetype,
+//           })
+//         );
+
+//         // Generate the S3 URL
+//         const url = await generateUploadURL(key, file.mimetype);
+
+//         // Push to array for this field
+//         fileKeys[fieldName].push({ url, public_id: key });
+//          console.log("After file upload middleware:",     fileKeys
+// );
+//       }
+//     }
+
+//     // Merge uploaded file URLs into req.body
+//     req.body = { ...req.body, ...fileKeys };
+
+//     // Debug: check what profilePic looks like
+
+
+//     // Continue to next middleware / controller
+//     // next();
+//   } catch (err) {
+//     console.error("File upload error:", err);
+//     return res.status(500).json({
+//       message: "Failed to upload files",
+//       error: err.message,
+//     });
+//   }
+// };
 
 
 // ---------------- Fields ----------------
@@ -157,24 +210,24 @@ employeeRoute.post(
 
 employeeRoute.get("/reportingManager", searchEmployeeByName)
 
-employeeRoute.get("/view",authorization,  viewEmployee);
+employeeRoute.get("/view", authorization, viewEmployee);
 
 employeeRoute.get("/view/:id", viewOneEmployee)
 
 
-employeeRoute.post("/login",loginEmployee)
+employeeRoute.post("/login", loginEmployee)
 
 
-employeeRoute.get("/get",authorization, (req, res) => {
- 
+employeeRoute.get("/get", authorization, (req, res) => {
+
   try {
     // req.user contains decoded info from JWT
     const user = req.user;
-// console.log(user)
+    // console.log(user)
     return res.status(200).json({
       success: true,
       message: "User details fetched successfully",
-      data:user,
+      data: user,
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });

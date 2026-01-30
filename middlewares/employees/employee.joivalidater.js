@@ -25,10 +25,10 @@ export const employeeSchemaJoi = Joi.object({
   // Role & Status
   role: Joi.string().trim().required(),
   status: Joi.string().valid("ACTIVE", "INACTIVE").default("ACTIVE"),
-  profilePic: Joi.object({
-    url: Joi.string().uri().optional(),
-    public_id: Joi.string().optional()
-  }).optional(),
+  // profilePic: Joi.object({
+  //   url: Joi.string().uri().optional(),
+  //   public_id: Joi.string().optional()
+  // }).optional(),
 
   // Salary Structure
   // salaryStructure: Joi.object({

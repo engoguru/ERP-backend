@@ -122,7 +122,7 @@ const employeeSchema = new mongoose.Schema(
     // Role & Status
     role: { type: String, required: true, trim: true },
     status: { type: String, enum: ["ACTIVE", "INACTIVE"], default: "ACTIVE" },
-    profilePic: { url: String, public_id: String },
+    profilePic:  { url: String, public_id: String },
 
     // Salary
     salaryStructure: { type: salaryStructureSchema, required: true },
