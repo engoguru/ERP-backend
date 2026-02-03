@@ -5,6 +5,8 @@ import { s3, generateUploadURL } from "../config/awsS3.js"; // S3 client + signe
 import { companyCreate } from "../controllers/company.controller.js";
 // import { companyConfigureSchemaJoi } from "../middlewares/company.joiValidater.js";
 import { companySchemaJoi } from "../middlewares/company.joiValidater.js";
+import { authorization } from "../utils/authorization.js";
+import { userDashboard } from "../controllers/employees/employee.controller.js";
 
 const companyRoutes = express.Router();
 
@@ -47,7 +49,7 @@ const uploadFilesMiddleware = async (req, res, next) => {
 
       const url = await generateUploadURL(key, file.mimetype);
       req.body.companyLogo = { url, public_Id: key };
-      console.log("Company Logo uploaded:", url);
+      // console.log("Company Logo uploaded:", url);
     } else {
       req.body.companyLogo = null;
     }
@@ -109,5 +111,8 @@ companyRoutes.post(
   companyValidate,
   companyCreate
 );
+
+
+
 
 export default companyRoutes;

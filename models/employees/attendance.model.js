@@ -21,12 +21,12 @@ const attendanceSchema = new mongoose.Schema(
 
         outTime: {
             type: String,
-            required: true
+        
         },
 
         workingHour: {
             type: Number, // store hours as number (e.g., 8.5)
-            required: true
+        
         },
 
         status: {

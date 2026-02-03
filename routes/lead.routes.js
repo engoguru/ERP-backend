@@ -1,6 +1,6 @@
 import express from "express";
 import { leadSchemaJoi } from "../middlewares/lead.joiValidater.js";
-import { leadCreate, leadDelete, leadUpdate, leadView, leadViewOne } from "../controllers/lead.controller.js";
+import { leadCreate, leadDashboard, leadDelete, leadUpdate, leadView, leadViewOne } from "../controllers/lead.controller.js";
 import { authorization } from "../utils/authorization.js";
 
 
@@ -104,6 +104,9 @@ authorization,
 
 
 leadRoute.delete("/delete/:id" ,leadDelete)
+
+
+leadRoute.get("/dashboardData",authorization,leadDashboard)
 
 
 

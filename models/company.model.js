@@ -92,16 +92,12 @@ const companySchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        minlength: 2,
         unique: true,
-        match: /^[A-Z0-9-]+$/i,
-        validate: {
-            validator: function (v) {
-                return /^[A-Z][0-9]{3,}$/.test(v);
-            },
-            message: props => `${props.value} is not a valid registration number!`
-        }
-    },
+        uppercase: true,
+        length: 21,
+        match: /^[LU][0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/,
+    }
+    ,
     registrationDate: {
         type: Date,
         required: true,

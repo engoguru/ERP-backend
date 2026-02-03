@@ -43,12 +43,15 @@ export const companySchemaJoi = Joi.object({
         .max(70)
         .required(),
 
-    registrationNumber: Joi.string()
-        .pattern(/^[A-Z][0-9]{3,}$/i)
-        .required()
-        .messages({
-            'string.pattern.base': 'Invalid registration number'
-        }),
+   registrationNumber: Joi.string()
+  .pattern(/^[LU][0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/)
+  .length(21)
+  .required()
+  .messages({
+    'string.pattern.base': 'Invalid Indian company registration number (CIN)',
+    'string.length': 'CIN must be exactly 21 characters'
+  }),
+
 
     registrationDate: Joi.date()
         .max('now')

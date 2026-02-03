@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
+import redis from "../config/redis.js";
     console.log( process.env.JWT_SECRET,"kk")
 export const authorization = async (req, res, next) => {
   try {
@@ -16,7 +17,13 @@ export const authorization = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+    // Check Redis for token
+    const redisKey = `employee:${decoded.id}:token`;
+    const redisToken = await redis.get(redisKey);
+  // console.log(redisToken,"po")
+    if (!redisToken || redisToken !== token) {
+      return res.status(401).json({ success: false, message: "Invalid or expired token" });
+    }
     req.user = decoded; // attach decoded user to request
     next();
   } catch (error) {

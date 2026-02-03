@@ -13,6 +13,7 @@ import { generateUploadURL,s3 } from "../config/awsS3.js";
  *   - req.body contains validated data
  *   - Uploaded files already injected with URL and public_Id
  */
+
 export const companyCreate = async (req, res) => {
   try {
     // console.log(req.body,"jyoiregjh")
@@ -65,6 +66,7 @@ export const companyUpdate=()=>{
 }
 
 
+
 export const companydelete=()=>{
     try {
         
@@ -72,3 +74,5 @@ export const companydelete=()=>{
         
     }
 }
+
+

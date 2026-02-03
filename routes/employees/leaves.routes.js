@@ -11,6 +11,7 @@ const leavesRoute= express.Router();
 
 // middleware/validate.js
 export const validate = () => (req, res, next) => {
+  console.log("dhweuhdo")
   const { error } = leavesSchemaJoi.validate(req.body, { abortEarly: false });
   if (error) {
     const errors = error.details.map((detail) => detail.message);
@@ -20,9 +21,12 @@ export const validate = () => (req, res, next) => {
 };
 
 /* ================= Leaves Routes ================= */
-leavesRoute.post("/leaves", validate,leavesCreate);
+leavesRoute.post("/create", validate(),leavesCreate);
+// leavesRoute.post("/create",(req,res)=>{
+//   console.log("jgejg")
+// })
 
-leavesRoute.put("/leaves/:id", validate, leavesUpdate);
+leavesRoute.put("/leaves/:id", validate(), leavesUpdate);
 
 leavesRoute.get("/leaves", leavesView);
 

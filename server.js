@@ -17,6 +17,12 @@ import companyRoutes from "./routes/company.routes.js";
 import { authorization } from "./utils/authorization.js";
 import { roleAllowed } from "./utils/roleAllowed.js";
 import ipRoutes from "./routes/employees/ip.routes.js";
+import { redisConnect } from "./config/redis.js";
+import startPayrollWorker from "./workers/payroll.worker.js";
+
+
+// import "./jobs/payroll.job.js"
+import { startPayrollCron } from "./jobs/payroll.job.js";
 
 dotenv.config();
 
@@ -24,9 +30,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ────────── DATABASE ──────────
-if (process.env.NODE_ENV !== "test") {
-    connectDB();
-}
+// if (process.env.NODE_ENV !== "test") {
+//     connectDB();
+// }
 
 // ────────── GLOBAL MIDDLEWARE ──────────
 const allowedOrigins = [
@@ -76,9 +82,29 @@ app.use(errorHandler);
 // ────────── EXPORT APP FOR TESTING ──────────
 export default app;
 
+startPayrollWorker()
+
+startPayrollCron()
 // ────────── START SERVER ONLY IF NOT TEST ──────────
 if (process.env.NODE_ENV !== "test") {
-    app.listen(PORT, () => {
-        console.log(`Server started at ${PORT}`);
-    });
+  (async () => {
+    try {
+      await connectDB();       // Connect your database
+      await redisConnect();    // Connect Redis
+      console.log("All services connected!");
+
+      // Start server only after connections succeed
+      app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+      });
+    } catch (err) {
+      console.error("Failed to connect services:", err);
+      process.exit(1); // Exit if critical services fail
+    }
+  })();
+} else {
+  // If in test mode, start the server without connecting to DB/Redis
+  app.listen(PORT, () => {
+    console.log(`Server running in TEST mode on http://localhost:${PORT}`);
+  });
 }

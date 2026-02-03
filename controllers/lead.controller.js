@@ -222,3 +222,47 @@ export const leadDelete = async (req, res, next) => {
         
 //     }
 // }
+
+
+
+export const leadDashboard = async (req, res) => {
+  try {
+    const { licenseId } = req.user;
+
+    // Start of current month
+    const startOfMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1
+    );
+
+    const [
+      totalleads,
+      monthlyleads 
+    ] = await Promise.all([
+      leadModel.countDocuments({ licenseId }),
+
+      leadModel.find({
+        licenseId,
+        createdAt: { $gte: startOfMonth },
+      }),
+
+      // LicenseModel.findById(licenseId).select("activeUser maxUser"),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalleads,
+        monthlyleads,
+        // license: licenseData,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};

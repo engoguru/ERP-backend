@@ -1,38 +1,43 @@
 import mongoose from "mongoose";
 import companyConfigureModel from "../companyConfigure.model.js";
-
+import eventModel from "./event.model.js";
 const leavesSchema = new mongoose.Schema({
   employeeId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Employee_Table",
     required: true
   },
-  fromDate: {
-    type: Date,
-    required: true
-  },
-  toDate: {
-    type: Date,
-    required: true
-  },
+  fromDate: { type: Date, required: true },
+  toDate: { type: Date, required: true },
+
+  // for fast monthly filtering
+  month: { type: Number, required: true }, // 0-11
+  year: { type: Number, required: true },
+
   leaveType: {
     type: String,
-    enum: ["Short Leave", "Paid Leave", "Half Day", "Round Mark"],
+    enum: ["Short Leave", "Paid Leave", "Half Day", "Round Mark", "Unpaid Leave"],
     required: true
   },
+
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Employee_Table"
   },
+
   totalday: {
     totalPaid: { type: Number, default: 0 },
     totalUnpaid: { type: Number, default: 0 }
   },
+
+  reason: { type: String, default: "" },
+
   status: {
     type: String,
     enum: ["Pending", "Approved", "Reject"],
     default: "Pending"
   },
+
   licenseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "LicenseTable",
@@ -40,146 +45,122 @@ const leavesSchema = new mongoose.Schema({
   }
 });
 
-// Helper: inclusive days between from and to dates
-const getDiffDays = (from, to) => {
-  const diff = Math.floor((new Date(to) - new Date(from)) / 86400000);
-  return diff >= 0 ? diff + 1 : 1; // at least 1 day
+const getBusinessDays = (from, to, weeklyOff = [], holidays = []) => {
+  let count = 0;
+  const current = new Date(from);
+  const end = new Date(to);
+
+  while (current <= end) {
+    const day = current.getDay(); // 0 = Sunday, 6 = Saturday
+    const isWeeklyOff = weeklyOff.includes(day);
+    const isHoliday = holidays.some(h => new Date(h).toDateString() === current.toDateString());
+
+    if (!isWeeklyOff && !isHoliday) count++;
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
 };
 
-// ===== Pre-save hook to calculate leave totals =====
-leavesSchema.pre("save", async function (next) {
+
+
+leavesSchema.pre("save", async function () {
   try {
+    //  Set month/year
+    if (!this.month) this.month = this.fromDate.getMonth();
+    if (!this.year) this.year = this.fromDate.getFullYear();
+
     this.totalday = { totalPaid: 0, totalUnpaid: 0 };
 
-    const diffDays = getDiffDays(this.fromDate, this.toDate);
-
-    // Fetch company leave policy
+    //  Fetch company policy
     const companyConfig = await companyConfigureModel.findOne({ licenseId: this.licenseId });
-    if (!companyConfig) return next(new Error("Company leave policy not found!"));
+    if (!companyConfig) throw new Error("Company policy not found");
 
     const policy = companyConfig.monthlyPolicy || {};
+    const weeklyOffs = companyConfig.weeklyOff?.days || [];
 
-    switch (this.leaveType) {
+    //  Fetch holidays from Event_Table for this license and month
+    const holidaysEvents = await eventModel.find({
+      licenseId: this.licenseId,
+      startDate: { $lte: this.toDate },
+      endDate: { $gte: this.fromDate },
+    }).select("startDate endDate");
 
-      // ===== PAID LEAVE =====
-      case "Paid Leave": {
-        const allowedPaid = policy.paidLeaveDays || 0;
-
-        const usedPaid = await mongoose.model("Leave_Table").aggregate([
-          { $match: { employeeId: this.employeeId, leaveType: "Paid Leave", licenseId: this.licenseId } },
-          { $group: { _id: null, total: { $sum: "$totalday.totalPaid" } } }
-        ]);
-        const used = usedPaid[0]?.total || 0;
-
-        if (used + diffDays <= allowedPaid) {
-          this.totalday.totalPaid = diffDays;
-        } else {
-          this.totalday.totalPaid = Math.max(0, allowedPaid - used);
-          this.totalday.totalUnpaid = diffDays - this.totalday.totalPaid;
-        }
-        break;
+    // flatten all holiday dates
+    const holidays = [];
+    holidaysEvents.forEach(e => {
+      let current = new Date(e.startDate);
+      const end = new Date(e.endDate);
+      while (current <= end) {
+        holidays.push(new Date(current));
+        current.setDate(current.getDate() + 1);
       }
+    });
 
-      // ===== SHORT LEAVE =====
-      case "Short Leave": {
-        const maxShort = policy.shortLeaveCount || 0;
-        const equivalent = policy.shortLeaveEquivalent || 0.25;
+    // 3️⃣ Calculate total business days
+    const totalBusinessDays = getBusinessDays(this.fromDate, this.toDate, weeklyOffs, holidays);
 
-        const usedShort = await mongoose.model("Leave_Table").aggregate([
-          { $match: { employeeId: this.employeeId, leaveType: "Short Leave", licenseId: this.licenseId } },
-          { $group: { _id: null, total: { $sum: "$totalday.totalPaid" } } }
-        ]);
-        const used = usedShort[0]?.total || 0;
-        const allowedInDays = maxShort * equivalent;
-
-        if (used + diffDays * equivalent <= allowedInDays) {
-          this.totalday.totalPaid = diffDays * equivalent;
-        } else {
-          const remaining = Math.max(0, allowedInDays - used);
-          this.totalday.totalPaid = remaining;
-          this.totalday.totalUnpaid = diffDays * equivalent - remaining;
-        }
-        break;
-      }
-
-      // ===== HALF DAY =====
-      case "Half Day": {
-        const maxHalf = policy.halfDayCount || 0;
-        const equivalent = policy.halfDayEquivalent || 0.5;
-
-        const usedHalf = await mongoose.model("Leave_Table").aggregate([
-          { $match: { employeeId: this.employeeId, leaveType: "Half Day", licenseId: this.licenseId } },
-          { $group: { _id: null, total: { $sum: "$totalday.totalPaid" } } }
-        ]);
-        const used = usedHalf[0]?.total || 0;
-        const allowedInDays = maxHalf * equivalent;
-
-        if (used + equivalent <= allowedInDays) {
-          this.totalday.totalPaid = equivalent;
-        } else {
-          const remaining = Math.max(0, allowedInDays - used);
-          this.totalday.totalPaid = remaining;
-          this.totalday.totalUnpaid = equivalent - remaining;
-        }
-        break;
-      }
-
-      // ===== UNPAID LEAVE =====
-      case "Unpaid Leave": {
-        const allowedPaid = policy.paidLeaveDays || 0;
-
-        const usedPaid = await mongoose.model("Leave_Table").aggregate([
-          { $match: { employeeId: this.employeeId, leaveType: "Paid Leave", licenseId: this.licenseId } },
-          { $group: { _id: null, total: { $sum: "$totalday.totalPaid" } } }
-        ]);
-        const used = usedPaid[0]?.total || 0;
-
-        if (used < allowedPaid) {
-          const remainingPaid = allowedPaid - used;
-          if (diffDays <= remainingPaid) {
-            this.totalday.totalPaid = diffDays;
-          } else {
-            this.totalday.totalPaid = remainingPaid;
-            this.totalday.totalUnpaid = diffDays - remainingPaid;
+    // 4️⃣ Helper to get used approved leaves
+    const usedLeaves = async (leaveType) => {
+      const result = await mongoose.model("Leave_Table").aggregate([
+        {
+          $match: {
+            employeeId: this.employeeId,
+            leaveType,
+            licenseId: this.licenseId,
+            month: this.month,
+            year: this.year,
+            status: "Approved"
           }
-        } else {
-          this.totalday.totalPaid = 0;
-          this.totalday.totalUnpaid = diffDays;
-        }
+        },
+        { $group: { _id: null, total: { $sum: "$totalday.totalPaid" } } }
+      ]);
+      return result[0]?.total || 0;
+    };
+
+    // 5️⃣ Determine allowed leave & deduction per type
+    let allowed = 0, deduction = 1;
+    switch (this.leaveType) {
+      case "Paid Leave":
+        allowed = policy.paidLeaveDays || 0;
+        deduction = 1;
         break;
-      }
-
-      // ===== ROUND MARK =====
-      case "Round Mark": {
-        const allowedCount = policy.roundMarkCount || 0;
-        const perMarkMinutes = policy.roundMarkMinutes || 15;
-
-        const usedMarks = await mongoose.model("Leave_Table").aggregate([
-          { $match: { employeeId: this.employeeId, leaveType: "Round Mark", licenseId: this.licenseId } },
-          { $group: { _id: null, total: { $sum: "$totalday.totalPaid" } } }
-        ]);
-        const used = usedMarks[0]?.total || 0;
-
-        const totalMinutes = perMarkMinutes * getDiffDays(this.fromDate, this.toDate);
-        if (used + totalMinutes <= allowedCount * perMarkMinutes) {
-          this.totalday.totalPaid = totalMinutes;
-        } else {
-          const excess = used + totalMinutes - allowedCount * perMarkMinutes;
-          this.totalday.totalPaid = Math.max(0, totalMinutes - excess);
-          this.totalday.totalUnpaid = excess;
-        }
+      case "Short Leave":
+        allowed = policy.shortLeaveCount || 0;
+        deduction = policy.shortLeaveEquivalent || 0.25;
         break;
-      }
-
-      default:
+      case "Half Day":
+        allowed = policy.halfDayCount || 0;
+        deduction = policy.halfDayEquivalent || 0.5;
         break;
+      case "Round Mark":
+        allowed = policy.roundMarkCount || 0;
+        deduction = policy.roundMarkMinutes || 15;
+        break;
+      case "Unpaid Leave":
+        this.totalday.totalUnpaid = totalBusinessDays;
+        return;
     }
 
-    next();
-  } catch (error) {
-    next(error);
+    // 6️⃣ Calculate paid/unpaid
+    const used = await usedLeaves(this.leaveType);
+    const remainingAllowed = Math.max(0, allowed - used);
+
+    if (totalBusinessDays <= remainingAllowed) {
+      this.totalday.totalPaid = totalBusinessDays * deduction;
+      this.totalday.totalUnpaid = 0;
+    } else {
+      this.totalday.totalPaid = remainingAllowed * deduction;
+      this.totalday.totalUnpaid = (totalBusinessDays - remainingAllowed) * deduction;
+    }
+
+  } catch (err) {
+    console.error("Leave calculation error:", err);
+    throw err;
   }
 });
 
-const leavesModel = mongoose.model("Leave_Table", leavesSchema);
-export default leavesModel;
+
+
+const LeaveModel = mongoose.model("Leave_Table", leavesSchema);
+export default LeaveModel;

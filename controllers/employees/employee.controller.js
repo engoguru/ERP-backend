@@ -8,6 +8,9 @@ import { generateEmployeeCode } from "../../utils/generateEmployeeCode.js";
 import jwt from "jsonwebtoken";
 import companyConfigureModel from "../../models/companyConfigure.model.js";
 import { checkIpAllowed } from "../../utils/verifyNetwork.js";
+import redis from "../../config/redis.js";
+import AttendanceModel from "../../models/employees/attendance.model.js";
+import LicenseModel from "../../models/license.model.js";
 // import { verifyNetwork } from "../../utils/verifyNetwork.js";
 
 
@@ -213,6 +216,25 @@ export const searchEmployeeByName = async (req, res, next) => {
 };
 
 
+const incrementActiveUser = async (licenseId) => {
+  const updated = await LicenseModel.findOneAndUpdate(
+    {
+      _id: licenseId,
+      $expr: { $lt: ["$activeUser", "$maxUser"] } // check activeUser < maxUser
+    },
+    { $inc: { activeUser: 1 } }, // increment by 1
+    { new: true } // return updated document
+  );
+
+  if (!updated) {
+    // either license not found OR activeUser already >= maxUser
+    return 0;
+  }
+
+  return updated.activeUser;
+};
+
+
 
 export const loginEmployee = async (req, res, next) => {
   try {
@@ -241,15 +263,7 @@ export const loginEmployee = async (req, res, next) => {
       });
     }
 
-    //      const clientIp = getClientIp(req);
-    // const isAllowed = await checkIpAllowed(checkEmployee?.licenseId?._id, clientIp);
 
-    // if (!isAllowed) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "Login blocked: IP address not allowed",
-    //   });
-    // }
 
     // Check license matches
     if (checkEmployee?.licenseId?.licenseId !== licenseId) {
@@ -291,6 +305,8 @@ export const loginEmployee = async (req, res, next) => {
       });
     }
 
+    const activeCount = await incrementActiveUser(checkEmployee.licenseId?._id);
+    console.log(activeCount);
     // Mock OTP for demo/test
     const testOtp = "123456";
 
@@ -313,14 +329,42 @@ export const loginEmployee = async (req, res, next) => {
       { expiresIn: "24h" }
     );
 
+    // Store token in Redis
+    const redisKey = `employee:${checkEmployee._id}:token`;
+    await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60); // 24 hours
     // Set JWT in cookie
     res.cookie("companyKey_keys", companyKey, {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      maxAge: 48 * 60 * 60 * 1000
+      maxAge: 24 * 60 * 60 * 1000
     });
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // reset time to 00:00:00 for date comparison
+
+    // Check if today's attendance already exists
+    let attendance = await AttendanceModel.findOne({
+      employeeId: checkEmployee._id,
+      licenseId: checkEmployee.licenseId?._id,
+      date: today,
+    });
+
+    if (attendance) {
+      // Already logged in today, maybe update inTime if needed
+      attendance.inTime = attendance.inTime || new Date();
+    } else {
+      // Create new attendance for today
+      attendance = new AttendanceModel({
+        employeeId: checkEmployee._id,
+        licenseId: checkEmployee.licenseId?._id,
+        inTime: new Date(),
+        date: today,
+      });
+    }
+
+    // console.log(attendance,"ppp")
+    await attendance.save();
     // Success response
     return res.status(200).json({
       success: true,
@@ -402,3 +446,47 @@ export const viewOneEmployee = async (req, res) => {
 };
 
 
+
+
+export const userDashboard = async (req, res) => {
+  try {
+    const { licenseId } = req.user;
+
+    // Start of current month
+    const startOfMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1
+    );
+
+    const [
+      totalEmployees,
+      monthlyEmployees,
+      licenseData,
+    ] = await Promise.all([
+      EmployeeModel.countDocuments({ licenseId }),
+
+      EmployeeModel.find({
+        licenseId,
+        createdAt: { $gte: startOfMonth },
+      }),
+
+      LicenseModel.findById(licenseId).select("activeUser maxUser"),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalEmployees,
+        monthlyEmployees,
+        license: licenseData,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};

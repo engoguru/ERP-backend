@@ -2,9 +2,12 @@ import express from "express";
 import multer from "multer";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3, generateUploadURL } from "../../config/awsS3.js";
-import { createEmployee, loginEmployee, searchEmployeeByName, viewEmployee, viewOneEmployee } from "../../controllers/employees/employee.controller.js";
+import { createEmployee, loginEmployee, searchEmployeeByName, userDashboard, viewEmployee, viewOneEmployee } from "../../controllers/employees/employee.controller.js";
 import { employeeSchemaJoi } from "../../middlewares/employees/employee.joivalidater.js";
 import { authorization } from "../../utils/authorization.js";
+import AttendanceModel from "../../models/employees/attendance.model.js";
+import redis from "../../config/redis.js";
+import LicenseModel from "../../models/license.model.js";
 
 const employeeRoute = express.Router();
 
@@ -208,6 +211,21 @@ employeeRoute.post(
 );
 
 
+
+const decrementActiveUser = async (licenseId) => {
+  const updated = await LicenseModel.findOneAndUpdate(
+  { _id: licenseId, $expr: { $gt: ["$activeUser", 0] } },
+  { $inc: { activeUser: -1 } }
+);
+
+  if (!updated) {
+    // either license not found OR activeUser already >= maxUser
+    return 0;
+  }
+
+  return updated.activeUser;
+};
+
 employeeRoute.get("/reportingManager", searchEmployeeByName)
 
 employeeRoute.get("/view", authorization, viewEmployee);
@@ -234,18 +252,61 @@ employeeRoute.get("/get", authorization, (req, res) => {
   }
 });
 
-employeeRoute.post("/logout", authorization, (req, res) => {
+employeeRoute.post("/logout", authorization, async (req, res) => {
   try {
+    const { id, licenseId } = req.user;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await AttendanceModel.findOne({
+      employeeId: id,
+      licenseId,
+      date: today
+    });
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found for today"
+      });
+    }
+
+    if (!attendance.inTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot calculate working hours: inTime missing"
+      });
+    }
+
+    const outTime = new Date();
+    const inTime = new Date(attendance.inTime);
+    const workingHour = (outTime - inTime) / (1000 * 60 * 60); // hours
+    attendance.outTime = outTime;
+    attendance.workingHour = Number(workingHour.toFixed(2));
+
+    await attendance.save();
+
+    // Delete token from Redis
+    const redisKey = `employee:${id}:token`;
+    await redis.del(redisKey);
+
+    // Clear cookie
     res.clearCookie("companyKey_keys", {
       httpOnly: true,
-      sameSite: "strict"
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production"
     });
+    const activeCount = await decrementActiveUser(licenseId);
+console.log(activeCount);
 
     return res.status(200).json({
       success: true,
-      message: "Logged out successfully"
+      message: "Logged out successfully",
+      workingHour: attendance.workingHour
     });
+
   } catch (error) {
+    console.error("Logout error:", error);
     return res.status(500).json({
       success: false,
       message: "Logout failed",
@@ -253,6 +314,11 @@ employeeRoute.post("/logout", authorization, (req, res) => {
     });
   }
 });
+
+
+
+employeeRoute.get("/dashboardData",authorization,userDashboard)
+
 
 
 

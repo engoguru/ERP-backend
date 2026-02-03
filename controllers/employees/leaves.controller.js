@@ -1,25 +1,87 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import leavesModel from "../../models/employees/leaves.model.js";
 
-export const leavesCreate = async (req, res, next) => {
-  try {
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({ message: "Request body is empty!" });
-    }
 
-    const leave = await leavesModel.create(req.body);
 
-    return res.status(201).json({
-      success: true,
-      message: "Leave request placed successfully!",
-      data: leave
+// export const leavesCreate = async (req, res, next) => {
+//   try {
+//     if (!req.body || Object.keys(req.body).length === 0) {
+//       return res.status(400).json({ message: "Request body is empty!" });
+//     }
+
+//     const leave = await leavesModel.create(req.body);
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Leave request placed successfully!",
+//       data: leave
+//     });
+
+//   } catch (error) {
+//     if (error.code === 11000) {
+//       return res.status(409).json({ message: "Duplicate leave request" });
+//     }
+//     next(error);
+//   }
+// };
+
+// Helper: split leave across months
+const splitLeaveByMonth = (fromDate, toDate) => {
+  const result = [];
+
+  let start = new Date(fromDate);   // convert string → Date
+  const endDate = new Date(toDate); // convert string → Date
+
+  while (start <= endDate) {
+    const year = start.getFullYear();
+    const month = start.getMonth();
+
+    const endOfMonth = new Date(year, month + 1, 0); // last day of month
+    const end = endOfMonth < endDate ? endOfMonth : endDate;
+
+    result.push({
+      fromDate: new Date(start),
+      toDate: new Date(end),
+      month,
+      year
     });
 
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({ message: "Duplicate leave request" });
+    start = new Date(end);
+    start.setDate(start.getDate() + 1); // move to next day
+  }
+
+  return result;
+};
+
+export const leavesCreate = async (req, res) => {
+  try {
+    console.log(req.body)
+    // 1️⃣ Split leave across months
+    const leaveDocs = splitLeaveByMonth(req.body.fromDate, req.body.toDate).map(d => ({
+      ...req.body,
+      fromDate: d.fromDate,
+      toDate: d.toDate,
+      month: d.month,
+      year: d.year
+    }));
+console.log(leaveDocs,"opp")
+    // 2️⃣ Save each month-wise leave
+    const savedLeaves = [];
+    for (const doc of leaveDocs) {
+      console.log(doc,"ppp")
+      const leave = new leavesModel(doc);
+      const saved = await leave.save(); // triggers pre-save hook
+      savedLeaves.push(saved);
     }
-    next(error);
+
+    // 3️⃣ Respond with saved leaves
+    res.status(201).json({
+      message: "Leave applied successfully (month-wise)",
+      data: savedLeaves
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 

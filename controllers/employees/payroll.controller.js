@@ -3,40 +3,52 @@ import mongoose, { isValidObjectId } from "mongoose";
 import payrollModel from "../../models/employees/payroll.model.js";
 
 // CREATE payroll
+
+// import { calculatePayroll } from "../services/payroll.service.js";
+import { calculatePayroll } from "../../services/payroll.service.js";
+
 export const payrollCreate = async (req, res, next) => {
   try {
-    const { employeeId, licenseId } = req.body;
+    const { employeeId, licenseId, month, year } = req.body;
 
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const endOfMonth = new Date();
-    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-    endOfMonth.setDate(0);
-    endOfMonth.setHours(23, 59, 59, 999);
-
-    const existingPayroll = await payrollModel.findOne({
+    const existing = await payrollModel.findOne({
       employeeId,
       licenseId,
-      paymentDate: { $gte: startOfMonth, $lte: endOfMonth }
+      month,
+      year
     });
 
-    if (existingPayroll) {
-      return res.status(409).json({ success: false, message: "Payroll already generated for this employee this month" });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Payroll already generated"
+      });
     }
 
-    const payroll = await payrollModel.create(req.body);
+    const payrollData = await calculatePayroll({
+      employeeId,
+      licenseId,
+      month,
+      year
+    });
+
+    const payroll = await payrollModel.create({
+      employeeId,
+      licenseId,
+      month,
+      year,
+      ...payrollData
+    });
 
     res.status(201).json({
       success: true,
-      message: "Payroll created successfully",
       data: payroll
     });
   } catch (error) {
     next(error);
   }
 };
+
 
 // UPDATE payroll
 export const payrollUpdate = async (req, res, next) => {
