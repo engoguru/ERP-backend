@@ -124,5 +124,6 @@ jobs:
           -e S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }} \
           -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
           -e MONGO_URI=${{ secrets.MONGO_URI }} \
+          -e REDIS_URL=${{ secrets.REDIS_URL }} \
           -e PORT=${{ secrets.PORT }} \
           ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }}
