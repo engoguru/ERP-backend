@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3, generateUploadURL } from "../config/awsS3.js"; // S3 client + signed URL function
-import { companyCreate, companyViewOne } from "../controllers/company.controller.js";
+import { companyCreate, companyUpdate, companyViewOne } from "../controllers/company.controller.js";
 // import { companyConfigureSchemaJoi } from "../middlewares/company.joiValidater.js";
 import { companySchemaJoi } from "../middlewares/company.joiValidater.js";
 import { authorization } from "../utils/authorization.js";
@@ -21,6 +21,7 @@ const uploadFields = upload.fields([
 
 // ---------------- Middleware for S3 upload ----------------
 const uploadFilesMiddleware = async (req, res, next) => {
+
   try {
     const files = req.files || {};
 
@@ -50,10 +51,7 @@ const uploadFilesMiddleware = async (req, res, next) => {
       const url = await generateUploadURL(key, file.mimetype);
       req.body.companyLogo = { url, public_Id: key };
       // console.log("Company Logo uploaded:", url);
-    } else {
-      req.body.companyLogo = null;
-    }
-
+    } 
     // ----- PAN Cards -----
     if (files.panCard && files.panCard.length > 0) {
       req.body.panCard = await Promise.all(
@@ -74,10 +72,8 @@ const uploadFilesMiddleware = async (req, res, next) => {
           return { url, public_Id: key };
         })
       );
-    } else {
-      req.body.panCard = [];
-    }
-
+    } 
+  // console.log("ded", req.body)
     next();
   } catch (err) {
     console.error("File upload error:", err);
@@ -103,6 +99,55 @@ const companyValidate = (req, res, next) => {
   next();
 };
 
+const updateLogo = async (req, res, next) => {
+  try {
+    // Parse companyBranch if sent as JSON string
+    if (req.body.companyBranch) {
+      try {
+        req.body.companyBranch = JSON.parse(req.body.companyBranch);
+      } catch (err) {
+        return res.status(400).json({ message: "Invalid companyBranch JSON" });
+      }
+    }
+
+    const files = req.files || {};
+
+    // ✅ Only handle logo if uploaded
+    if (files.companyLogo && files.companyLogo[0]) {
+      const file = files.companyLogo[0];
+      const key = `company/logo/${Date.now()}-${file.originalname}`;
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: "ngo-guru-bucket",
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        })
+      );
+
+      const url = await generateUploadURL(key, file.mimetype);
+
+      // ✅ Set only when new logo exists
+      req.body.companyLogo = {
+        url,
+        public_Id: key,
+      };
+    }
+
+    // ❌ DO NOT set companyLogo = null
+    // Let controller decide what to update
+
+    next();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Logo upload failed",
+      error: error.message,
+    });
+  }
+};
+
 // ---------------- Route ----------------
 companyRoutes.post(
   "/create",
@@ -113,7 +158,10 @@ companyRoutes.post(
 );
 
 
-companyRoutes.get("/viewOne",authorization,companyViewOne)
+companyRoutes.get("/viewOne",authorization,companyViewOne);
+
+
+companyRoutes.put("/update/:id",authorization,  uploadFields, uploadFilesMiddleware,companyUpdate)
 
 
 export default companyRoutes;

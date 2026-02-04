@@ -5,6 +5,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 import { generateUploadURL, s3 } from "../config/awsS3.js";
 import LicenseModel from "../models/license.model.js";
+import { isValidObjectId } from "mongoose";
 
 
 
@@ -86,13 +87,47 @@ export const companyViewAll = () => {
 
   }
 }
-export const companyUpdate = () => {
+
+
+export const companyUpdate = async (req, res) => {
   try {
+    const { role } = req.user;
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid company ID" });
+    }
+
+    // Check Admin role
+    if (role !== "Admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    // Prepare update data
+    const updateData = {
+      companyBranch: req.body.companyBranch,
+    };
+
+    if (req.body.companyLogo) {
+      updateData.companyLogo = req.body.companyLogo;
+    }
+
+    // Update company
+    const updatedCompany = await companyModel.findByIdAndUpdate(id, updateData, { new: true });
+
+    if (!updatedCompany) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    // Send updated company as response
+    return res.status(200).json({ message: "Company updated successfully", data: updatedCompany });
 
   } catch (error) {
-
+    console.error("Error updating company:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
-}
+};
 
 
 
