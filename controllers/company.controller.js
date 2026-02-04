@@ -3,7 +3,8 @@ import companyModel from "../models/company.model.js";
 
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 
-import { generateUploadURL,s3 } from "../config/awsS3.js";
+import { generateUploadURL, s3 } from "../config/awsS3.js";
+import LicenseModel from "../models/license.model.js";
 
 
 
@@ -43,36 +44,64 @@ export const companyCreate = async (req, res) => {
 };
 
 
-export const companyViewOne=()=>{
-    try {
-        
-    } catch (error) {
-        
+export const companyViewOne = async (req, res) => {
+  try {
+    const { licenseId } = req.user;
+
+    if (!licenseId) {
+      return res.status(400).json({ message: "License ID not found for user" });
     }
+
+    const checkLicenseId = await LicenseModel.findById(licenseId);
+
+    if (!checkLicenseId) {
+      return res.status(404).json({ message: "License not found" });
+    }
+
+    const companyDetail = await companyModel.findOne({ gstNumber: checkLicenseId.gstNumber });
+
+    if (!companyDetail) {
+      return res.status(404).json({ message: "Company details not found" });
+    }
+
+    // Fix assignment issue
+    const publicId = companyDetail.companyLogo?.public_Id;
+    if (publicId) {
+      companyDetail.companyLogo.url = await generateUploadURL(publicId);
+    }
+
+    return res.status(200).json({ data: companyDetail });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
+export const companyViewAll = () => {
+  try {
+
+  } catch (error) {
+
+  }
 }
-export const companyViewAll=()=>{
-    try {
-        
-    } catch (error) {
-        
-    }
-}
-export const companyUpdate=()=>{
-    try {
-        
-    } catch (error) {
-        
-    }
+export const companyUpdate = () => {
+  try {
+
+  } catch (error) {
+
+  }
 }
 
 
 
-export const companydelete=()=>{
-    try {
-        
-    } catch (error) {
-        
-    }
+export const companydelete = () => {
+  try {
+
+  } catch (error) {
+
+  }
 }
 
 

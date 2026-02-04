@@ -23,6 +23,7 @@ import startPayrollWorker from "./workers/payroll.worker.js";
 
 // import "./jobs/payroll.job.js"
 import { startPayrollCron } from "./jobs/payroll.job.js";
+import Issueroute from "./routes/employees/issue.routes.js";
 
 dotenv.config();
 
@@ -73,6 +74,8 @@ app.use("/api/payroll", payrollRoute);
 app.use("/api/attendance", attendanceRoute);
 app.use("/api/event", eventRoute);
 app.use("/api/employee", employeeRoute);
+
+app.use("/api/issue",Issueroute)
 
 app.use("/api/ip",ipRoutes)
 

@@ -266,3 +266,64 @@ export const leadDashboard = async (req, res) => {
     });
   }
 };
+
+
+export const verifyMeta=async(req,res)=>{
+  try {
+    const mode=req.query["hub.mode"];
+    const token=req.query["hub.verify_token"];
+    const challenge=req.query["hub.challenge"];
+    if(mode==="Subscribe"  &&  token===process.env.Meta_Token){
+      return res.status(200).send(challenge)
+    }
+
+    return res.sendStatus(403)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+import axios from "axios";
+
+
+export const metaLeadStore = async (req, res) => {
+  try {
+    const leadId = req.body.entry[0].changes[0].value.leadgen_id; // FIXED typo
+    if (!leadId) return res.sendStatus(200);
+
+    // Get licenseId dynamically (query param or map by page/form)
+    const licenseId = req.query.licenseId; 
+    if (!licenseId) return res.status(400).send("licenseId required");
+
+    // Fetch lead data from Meta
+    const leadResponse = await axios.get(
+      `https://graph.facebook.com/v18.0/${leadId}`,
+      {
+        params: {
+          access_token: process.env.Pages_Access_Token,
+        },
+      }
+    );
+
+    // Map field data
+    const fields = {};
+    leadResponse.data.field_data.forEach((f) => {
+      fields[f.name] = f.values[0];
+    });
+
+    // Save lead
+    await leadModel.create({
+      licenseId,
+      leadgenId: leadId,
+      fields,
+      whoAssignedwho: [], // empty initially
+      followUp: [],       // empty initially
+    });
+
+    console.log("Lead saved:", leadId, "for license:", licenseId);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("Error saving lead:", error.message);
+    res.sendStatus(500);
+  }
+};

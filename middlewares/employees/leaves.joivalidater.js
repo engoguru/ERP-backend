@@ -1,7 +1,7 @@
 import Joi from "joi";
 
 export const leavesSchemaJoi = Joi.object({
-  employeeId: Joi.string().trim().required(),
+  // employeeId: Joi.string().trim().required(),
 
   fromDate: Joi.date().required(),
 
@@ -20,6 +20,6 @@ export const leavesSchemaJoi = Joi.object({
 
   reason: Joi.string().allow("").optional(),
 
-  licenseId: Joi.string().trim().required()
+  // licenseId: Joi.string().trim().required()
 })
   .options({ stripUnknown: true });

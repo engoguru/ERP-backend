@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3, generateUploadURL } from "../config/awsS3.js"; // S3 client + signed URL function
-import { companyCreate } from "../controllers/company.controller.js";
+import { companyCreate, companyViewOne } from "../controllers/company.controller.js";
 // import { companyConfigureSchemaJoi } from "../middlewares/company.joiValidater.js";
 import { companySchemaJoi } from "../middlewares/company.joiValidater.js";
 import { authorization } from "../utils/authorization.js";
@@ -113,6 +113,7 @@ companyRoutes.post(
 );
 
 
+companyRoutes.get("/viewOne",authorization,companyViewOne)
 
 
 export default companyRoutes;

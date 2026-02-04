@@ -2,6 +2,7 @@ import express from "express";
 
 import { leavesCreate, leavesDelete, leavesUpdate, leavesView, leavesViewOne } from "../../controllers/employees/leaves.controller.js";
 import { leavesSchemaJoi } from "../../middlewares/employees/leaves.joivalidater.js";
+import { authorization } from "../../utils/authorization.js";
 
 
 
@@ -11,7 +12,7 @@ const leavesRoute= express.Router();
 
 // middleware/validate.js
 export const validate = () => (req, res, next) => {
-  console.log("dhweuhdo")
+  // console.log("dhweuhdo")
   const { error } = leavesSchemaJoi.validate(req.body, { abortEarly: false });
   if (error) {
     const errors = error.details.map((detail) => detail.message);
@@ -21,16 +22,16 @@ export const validate = () => (req, res, next) => {
 };
 
 /* ================= Leaves Routes ================= */
-leavesRoute.post("/create", validate(),leavesCreate);
+leavesRoute.post("/create",authorization, validate(),leavesCreate);
 // leavesRoute.post("/create",(req,res)=>{
 //   console.log("jgejg")
 // })
 
-leavesRoute.put("/leaves/:id", validate(), leavesUpdate);
+leavesRoute.put("/update/:id",authorization, leavesUpdate);
 
-leavesRoute.get("/leaves", leavesView);
+leavesRoute.get("/view",authorization, leavesView);
 
-leavesRoute.get("/leaves/:id", leavesViewOne);
+leavesRoute.get("/view/:id",authorization, leavesViewOne);
 
 leavesRoute.delete("/leaves/:id", leavesDelete);
 

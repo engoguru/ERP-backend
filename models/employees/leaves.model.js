@@ -75,9 +75,9 @@ leavesSchema.pre("save", async function () {
     //  Fetch company policy
     const companyConfig = await companyConfigureModel.findOne({ licenseId: this.licenseId });
     if (!companyConfig) throw new Error("Company policy not found");
-
-    const policy = companyConfig.monthlyPolicy || {};
-    const weeklyOffs = companyConfig.weeklyOff?.days || [];
+// console.log(companyConfig?.holiday?.monthlyPolicy,"thyh")
+    const policy = companyConfig?.holiday?.monthlyPolicy || {};
+    const weeklyOffs = companyConfig?.holiday?.weeklyOff?.days || [];
 
     //  Fetch holidays from Event_Table for this license and month
     const holidaysEvents = await eventModel.find({
@@ -142,6 +142,7 @@ leavesSchema.pre("save", async function () {
         return;
     }
 
+
     // 6️⃣ Calculate paid/unpaid
     const used = await usedLeaves(this.leaveType);
     const remainingAllowed = Math.max(0, allowed - used);
@@ -153,7 +154,7 @@ leavesSchema.pre("save", async function () {
       this.totalday.totalPaid = remainingAllowed * deduction;
       this.totalday.totalUnpaid = (totalBusinessDays - remainingAllowed) * deduction;
     }
-
+// console.log("policy:", policy, "allowed:", allowed, "used:", used, "totalBusinessDays:", totalBusinessDays);
   } catch (err) {
     console.error("Leave calculation error:", err);
     throw err;
