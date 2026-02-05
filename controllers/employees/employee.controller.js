@@ -243,12 +243,13 @@ const calculateLoginTime = async (licenseId, id) => {
   //  const { id, licenseId } = req.user;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
+// console.log(licenseId,id,"ioi")
   const attendance = await AttendanceModel.findOne({
     employeeId: id,
     licenseId,
     date: today
   });
+  // console.log(attendance,"atn")
 
   if (!attendance) {
     return res.status(404).json({
@@ -376,9 +377,9 @@ export const loginEmployee = async (req, res, next) => {
     const existingToken = await redis.get(redisKey);
 
     if (existingToken) {
-
+// console.log(redisKey,existingToken,"pp")
       await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60);
-      await calculateLoginTime(checkEmployee.licenseId?._id,)
+      await calculateLoginTime(checkEmployee.licenseId?._id,checkEmployee._id)
     } else {
       // first login
       const activeCount = await incrementActiveUser(checkEmployee.licenseId?._id, checkEmployee._id);
