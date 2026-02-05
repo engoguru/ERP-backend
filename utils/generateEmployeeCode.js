@@ -5,7 +5,7 @@ export const generateEmployeeCode = async (licenseId) => {
 
   // Get last employee sorted by createdAt
   const lastEmployee = await EmployeeModel
-    .findOne({licenseId:licenseId}, { employeeCode: 1 })
+    .findOne({}, { employeeCode: 1 })
     .sort({ createdAt: -1 })
     .lean();
 

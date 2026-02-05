@@ -34,7 +34,7 @@ export const createEmployee = async (req, res) => {
 
   try {
     if (req.body.employeeCode) {
-      req.body.employeeCode = await generateEmployeeCode(req.user.licenseId);
+      req.body.employeeCode = await generateEmployeeCode();
     }
     // Parse JSON fields sent via FormData
     if (req.body.salaryStructure && typeof req.body.salaryStructure === "string") {
@@ -186,7 +186,7 @@ export const viewEmployee = async (req, res, next) => {
 export const searchEmployeeByName = async (req, res, next) => {
   try {
     const { name } = req.query;
-    const { licenseId } = req.user;
+    // const { licenseId } = req.user;
 
     if (!name) {
       return res.status(400).json({
@@ -198,7 +198,7 @@ export const searchEmployeeByName = async (req, res, next) => {
     // Find employees by partial, case-insensitive name match
     const employees = await EmployeeModel.find(
       {
-        licenseId: licenseId,
+        // licenseId: licenseId,
         name: { $regex: name, $options: "i" }
       },
       { _id: 1, name: 1 }

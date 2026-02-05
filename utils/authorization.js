@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
 import redis from "../config/redis.js";
-    console.log( process.env.JWT_SECRET,"kk")
+    // console.log( process.env.JWT_SECRET,"kk")
 export const authorization = async (req, res, next) => {
   try {
     // console.log("jjj")
@@ -18,6 +18,7 @@ export const authorization = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     // Check Redis for token
+    // console.log(decoded,token,"hjg")
     const redisKey = `employee:${decoded.id}:token`;
     const redisToken = await redis.get(redisKey);
   // console.log(redisToken,"po")

@@ -70,6 +70,7 @@ const validate = (req, res, next) => {
 // };
 const uploadFilesMiddleware = async (req, res, next) => {
   try {
+    // console.log(req.body,"ppou")
     const files = req.files || {};
     const fileKeys = {};
 
