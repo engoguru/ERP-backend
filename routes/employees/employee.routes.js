@@ -297,7 +297,7 @@ employeeRoute.post("/logout", authorization, async (req, res) => {
       secure: process.env.NODE_ENV === "production"
     });
     const activeCount = await decrementActiveUser(licenseId);
-console.log(activeCount);
+// console.log(activeCount);
 
     return res.status(200).json({
       success: true,

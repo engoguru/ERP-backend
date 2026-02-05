@@ -1,11 +1,11 @@
 import EmployeeModel from "../models/employees/employee.model.js";
 
-export const generateEmployeeCode = async () => {
+export const generateEmployeeCode = async (licenseId) => {
   const prefix = "EMP";
 
   // Get last employee sorted by createdAt
   const lastEmployee = await EmployeeModel
-    .findOne({}, { employeeCode: 1 })
+    .findOne({licenseId:licenseId}, { employeeCode: 1 })
     .sort({ createdAt: -1 })
     .lean();
 

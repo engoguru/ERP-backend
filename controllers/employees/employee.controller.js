@@ -34,7 +34,7 @@ export const createEmployee = async (req, res) => {
 
   try {
     if (req.body.employeeCode) {
-      req.body.employeeCode = await generateEmployeeCode();
+      req.body.employeeCode = await generateEmployeeCode(req.user.licenseId);
     }
     // Parse JSON fields sent via FormData
     if (req.body.salaryStructure && typeof req.body.salaryStructure === "string") {
@@ -141,7 +141,7 @@ export const viewEmployee = async (req, res, next) => {
     const { employeeCode } = req?.user;
 
     const licenseData = await EmployeeModel
-      .findOne({ employeeCode })
+      .findOne({employeeCode })
       .populate("licenseId", "_id")
       .lean();
 
@@ -186,6 +186,7 @@ export const viewEmployee = async (req, res, next) => {
 export const searchEmployeeByName = async (req, res, next) => {
   try {
     const { name } = req.query;
+    const { licenseId } = req.user;
 
     if (!name) {
       return res.status(400).json({
@@ -196,9 +197,13 @@ export const searchEmployeeByName = async (req, res, next) => {
 
     // Find employees by partial, case-insensitive name match
     const employees = await EmployeeModel.find(
-      { name: { $regex: name, $options: "i" } },
-      { _id: 1, name: 1 } // Only return _id and name
+      {
+        licenseId: licenseId,
+        name: { $regex: name, $options: "i" }
+      },
+      { _id: 1, name: 1 }
     ).lean();
+
 
     return res.status(200).json({
       success: true,
@@ -215,7 +220,7 @@ export const searchEmployeeByName = async (req, res, next) => {
   }
 };
 
-
+// login Work Started here
 const incrementActiveUser = async (licenseId) => {
   const updated = await LicenseModel.findOneAndUpdate(
     {
@@ -234,7 +239,39 @@ const incrementActiveUser = async (licenseId) => {
   return updated.activeUser;
 };
 
+const calculateLoginTime = async (licenseId, id) => {
+  //  const { id, licenseId } = req.user;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
+  const attendance = await AttendanceModel.findOne({
+    employeeId: id,
+    licenseId,
+    date: today
+  });
+
+  if (!attendance) {
+    return res.status(404).json({
+      success: false,
+      message: "Attendance record not found for today"
+    });
+  }
+
+  if (!attendance.inTime) {
+    return res.status(400).json({
+      success: false,
+      message: "Cannot calculate working hours: inTime missing"
+    });
+  }
+
+  const outTime = new Date();
+  const inTime = new Date(attendance.inTime);
+  const workingHour = (outTime - inTime) / (1000 * 60 * 60); // hours
+  attendance.outTime = outTime;
+  attendance.workingHour = Number(workingHour.toFixed(2));
+
+  await attendance.save();
+}
 
 export const loginEmployee = async (req, res, next) => {
   try {
@@ -247,6 +284,7 @@ export const loginEmployee = async (req, res, next) => {
         message: "Email, contact, and licenseId are required",
       });
     }
+
 
 
 
@@ -305,8 +343,8 @@ export const loginEmployee = async (req, res, next) => {
       });
     }
 
-    const activeCount = await incrementActiveUser(checkEmployee.licenseId?._id);
-    console.log(activeCount);
+
+    // console.log(activeCount);
     // Mock OTP for demo/test
     const testOtp = "123456";
 
@@ -330,8 +368,23 @@ export const loginEmployee = async (req, res, next) => {
     );
 
     // Store token in Redis
+    // const redisKey = `employee:${checkEmployee._id}:token`;
+    // await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60); // 24 hours
     const redisKey = `employee:${checkEmployee._id}:token`;
-    await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60); // 24 hours
+
+    // check if token already exists
+    const existingToken = await redis.get(redisKey);
+
+    if (existingToken) {
+
+      await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60);
+      await calculateLoginTime(checkEmployee.licenseId?._id,)
+    } else {
+      // first login
+      const activeCount = await incrementActiveUser(checkEmployee.licenseId?._id, checkEmployee._id);
+      await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60);
+    }
+
     // Set JWT in cookie
     res.cookie("companyKey_keys", companyKey, {
       httpOnly: true,
@@ -380,7 +433,7 @@ export const loginEmployee = async (req, res, next) => {
   }
 };
 
-
+// login Work End here
 
 export const viewOneEmployee = async (req, res) => {
   try {
