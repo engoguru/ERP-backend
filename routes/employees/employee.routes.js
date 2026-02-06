@@ -211,8 +211,6 @@ employeeRoute.post(
   createEmployee      // Controller saves employee
 );
 
-
-
 const decrementActiveUser = async (licenseId) => {
   const updated = await LicenseModel.findOneAndUpdate(
   { _id: licenseId, $expr: { $gt: ["$activeUser", 0] } },
@@ -253,68 +251,68 @@ employeeRoute.get("/get", authorization, (req, res) => {
   }
 });
 
-employeeRoute.post("/logout", authorization, async (req, res) => {
-  try {
-    const { id, licenseId } = req.user;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+// employeeRoute.post("/logout", authorization, async (req, res) => {
+//   try {
+//     const { id, licenseId } = req.user;
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
 
-    const attendance = await AttendanceModel.findOne({
-      employeeId: id,
-      licenseId,
-      date: today
-    });
+//     const attendance = await AttendanceModel.findOne({
+//       employeeId: id,
+//       licenseId,
+//       date: today
+//     });
 
-    if (!attendance) {
-      return res.status(404).json({
-        success: false,
-        message: "Attendance record not found for today"
-      });
-    }
+//     if (!attendance) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Attendance record not found for today"
+//       });
+//     }
 
-    if (!attendance.inTime) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot calculate working hours: inTime missing"
-      });
-    }
+//     if (!attendance.inTime) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Cannot calculate working hours: inTime missing"
+//       });
+//     }
 
-    const outTime = new Date();
-    const inTime = new Date(attendance.inTime);
-    const workingHour = (outTime - inTime) / (1000 * 60 * 60); // hours
-    attendance.outTime = outTime;
-    attendance.workingHour = Number(workingHour.toFixed(2));
+//     const outTime = new Date();
+//     const inTime = new Date(attendance.inTime);
+//     const workingHour = (outTime - inTime) / (1000 * 60 * 60); // hours
+//     attendance.outTime = outTime;
+//     attendance.workingHour = Number(workingHour.toFixed(2));
 
-    await attendance.save();
+//     await attendance.save();
 
-    // Delete token from Redis
-    const redisKey = `employee:${id}:token`;
-    await redis.del(redisKey);
+//     // Delete token from Redis
+//     const redisKey = `employee:${id}:token`;
+//     await redis.del(redisKey);
 
-    // Clear cookie
-    res.clearCookie("companyKey_keys", {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production"
-    });
-    const activeCount = await decrementActiveUser(licenseId);
-// console.log(activeCount);
+//     // Clear cookie
+//     res.clearCookie("companyKey_keys", {
+//       httpOnly: true,
+//       sameSite: "strict",
+//       secure: process.env.NODE_ENV === "production"
+//     });
+//     const activeCount = await decrementActiveUser(licenseId);
+// // console.log(activeCount);
 
-    return res.status(200).json({
-      success: true,
-      message: "Logged out successfully",
-      workingHour: attendance.workingHour
-    });
+//     return res.status(200).json({
+//       success: true,
+//       message: "Logged out successfully",
+//       workingHour: attendance.workingHour
+//     });
 
-  } catch (error) {
-    console.error("Logout error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Logout failed",
-      error: error.message
-    });
-  }
-});
+//   } catch (error) {
+//     console.error("Logout error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Logout failed",
+//       error: error.message
+//     });
+//   }
+// });
 
 
 
@@ -322,5 +320,73 @@ employeeRoute.get("/dashboardData",authorization,userDashboard)
 
 
 
+
+
+// Get IST day range in UTC
+const getISTDayRangeUTC = () => {
+  const IST_OFFSET = 330 * 60 * 1000; // +5:30
+  const now = new Date();
+
+  const istNow = new Date(now.getTime() + IST_OFFSET);
+
+  const istStart = new Date(istNow);
+  istStart.setHours(0, 0, 0, 0);
+
+  const istEnd = new Date(istNow);
+  istEnd.setHours(23, 59, 59, 999);
+
+  return {
+    startUTC: new Date(istStart.getTime() - IST_OFFSET),
+    endUTC: new Date(istEnd.getTime() - IST_OFFSET),
+  };
+};
+
+
+// ===== LOGOUT EMPLOYEE =====
+employeeRoute.post("/logout", authorization, async (req, res) => {
+  try {
+    const { id, licenseId } = req.user;
+    const { startUTC, endUTC } = getISTDayRangeUTC();
+
+    const attendance = await AttendanceModel.findOne({
+      employeeId: id,
+      licenseId,
+      date: { $gte: startUTC, $lte: endUTC },
+    });
+
+    if (!attendance || !attendance.inTime) {
+      return res.status(400).json({ success: false, message: "No active session found" });
+    }
+
+    const outTime = new Date();
+    const diffMinutes = Math.floor((outTime - new Date(attendance.inTime)) / (1000 * 60));
+
+    attendance.workingMinutes = (attendance.workingMinutes || 0) + diffMinutes;
+    attendance.outTime = outTime;
+    // attendance.inTime = null;
+    attendance.workingHour = Number((attendance.workingMinutes / 60).toFixed(2));
+
+    await attendance.save();
+
+    // Redis + cookie cleanup
+    const redisKey = `employee:${id}:token`;
+    await redis.del(redisKey);
+      res.clearCookie("companyKey_keys", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production"
+    });
+    await decrementActiveUser(licenseId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+      workingHour: attendance.workingHour,
+    });
+  } catch (error) {
+    console.error("logoutEmployee error:", error);
+    return res.status(500).json({ success: false, message: "Logout failed", error: error.message });
+  }
+});
 
 export default employeeRoute;
