@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3, generateUploadURL } from "../../config/awsS3.js";
-import { createEmployee, loginEmployee, searchEmployeeByName, userDashboard, viewEmployee, viewOneEmployee } from "../../controllers/employees/employee.controller.js";
+import { createEmployee, loginEmployee, searchEmployeeByName, updateEmployee, userDashboard, viewEmployee, viewOneEmployee } from "../../controllers/employees/employee.controller.js";
 import { employeeSchemaJoi } from "../../middlewares/employees/employee.joivalidater.js";
 import { authorization } from "../../utils/authorization.js";
 import AttendanceModel from "../../models/employees/attendance.model.js";
@@ -210,6 +210,14 @@ employeeRoute.post(
   uploadFilesMiddleware, // Upload files to S3 and attach URLs
   createEmployee      // Controller saves employee
 );
+
+employeeRoute.put(
+  "/update/:id", 
+  uploadFields,       // Parse multipart/form-data
+  uploadFilesMiddleware, // Upload files to S3 and attach URLs
+ updateEmployee      // Controller saves employee
+);
+
 
 const decrementActiveUser = async (licenseId) => {
   const updated = await LicenseModel.findOneAndUpdate(

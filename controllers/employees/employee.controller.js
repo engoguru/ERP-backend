@@ -127,14 +127,14 @@ export const createEmployee = async (req, res) => {
 
 export const viewEmployee = async (req, res, next) => {
   try {
-    let { page = 1, limit = 10, sortBy = "createdAt", order = "desc" } = req.query;
+    let { page = 1, limit = 100, sortBy = "createdAt", order = "desc" } = req.query;
 
     page = parseInt(page);
     limit = parseInt(limit);
 
     // Ensure valid page & limit
     if (page < 1) page = 1;
-    if (limit < 1) limit = 10;
+    if (limit < 1) limit = 100;
 
 
 
@@ -177,6 +177,116 @@ export const viewEmployee = async (req, res, next) => {
     return res.status(500).json({
       success: false,
       message: "Error fetching employees",
+      error: error.message,
+    });
+  }
+};
+
+export const updateEmployee = async (req, res) => {
+  try {
+    // console.log("RAW BODY ", req.body);
+
+    const { employeeId } = req.body;
+
+    if (!employeeId) {
+      return res.status(400).json({
+        success: false,
+        message: "employeeId is required",
+      });
+    }
+
+    // ----------  Parse JSON fields ----------
+    const jsonFields = [
+      "salaryStructure",
+      "shiftDetail",
+      "employeeEmail",
+      "employeeContact",
+      "bankDetail",
+      "emgContact",
+      "reportingManager",
+      "balanceLeave",
+      "stationaryAlloted",
+    ];
+
+    jsonFields.forEach((field) => {
+      if (req.body[field] && typeof req.body[field] === "string") {
+        try {
+          req.body[field] = JSON.parse(req.body[field]);
+        } catch (err) {
+          console.error(`JSON parse error in ${field}`);
+        }
+      }
+    });
+
+    // ----------  Convert ObjectIds ----------
+    if (req.body.licenseId) {
+      if (mongoose.Types.ObjectId.isValid(req.body.licenseId)) {
+        req.body.licenseId = new mongoose.Types.ObjectId(req.body.licenseId);
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid licenseId",
+        });
+      }
+    }
+
+    if (req.body.reportingManager?._id) {
+      req.body.reportingManager._id = new mongoose.Types.ObjectId(
+        req.body.reportingManager._id
+      );
+    }
+
+    // ----------  Salary recalculation ----------
+    if (req.body.salaryStructure) {
+      const s = req.body.salaryStructure;
+
+      s.basic = Number(s.basic) || 0;
+      s.hra = Number(s.hra) || 0;
+      s.otherAllowance = Number(s.otherAllowance) || 0;
+      s.pf = Number(s.pf) || 0;
+      s.esi = Number(s.esi) || 0;
+      s.professionalTax = Number(s.professionalTax) || 0;
+      s.gratuity = Number(s.gratuity) || 0;
+
+      s.grossSalary = s.basic + s.hra + s.otherAllowance;
+      s.totalDeduction = s.pf + s.esi + s.professionalTax;
+      s.netSalary = s.grossSalary - s.totalDeduction;
+    }
+
+
+    // ----------  UPDATE EMPLOYEE ----------
+    const updatedEmployee = await EmployeeModel.findByIdAndUpdate(
+      employeeId,
+      req.body, // same as create, directly $set req.body
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedEmployee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: updatedEmployee,
+    });
+  } catch (error) {
+    console.error("UPDATE ERROR 👉", error);
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `Duplicate ${field}`,
+        error: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Error updating employee",
       error: error.message,
     });
   }
@@ -729,6 +839,7 @@ export const loginEmployee = async (req, res) => {
     });
 
     if (!attendance) {
+      // console.log("rgjrt")
       attendance = await AttendanceModel.create({
         employeeId: checkEmployee._id,
         licenseId: checkEmployee.licenseId._id,

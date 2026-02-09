@@ -82,7 +82,7 @@ export const payrollUpdate = async (req, res, next) => {
 // VIEW paginated payrolls
 export const payrollView = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, licenseId, employeeId, paymentStatus } = req.query;
+    const { page = 1, limit = 100, licenseId, employeeId, paymentStatus } = req.query;
 
     const filter = {};
     if (licenseId && isValidObjectId(licenseId)) filter.licenseId = licenseId;

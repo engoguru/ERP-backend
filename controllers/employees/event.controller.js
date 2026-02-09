@@ -98,7 +98,7 @@ export const eventViewOne = async (req, res, next) => {
 export const eventView = async (req, res, next) => {
     try {
 
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 100 } = req.query;
         const licenseId=req.user.licenseId
         const filter = {};
         if (licenseId && isValidObjectId(licenseId)) {
@@ -132,7 +132,7 @@ export const eventView = async (req, res, next) => {
  */
 export const eventViewAll = async (req, res, next) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 100 } = req.query;
 
         const filter = {};
         if (licenseId && isValidObjectId(licenseId)) {

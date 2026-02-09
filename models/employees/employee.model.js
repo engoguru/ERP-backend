@@ -152,7 +152,7 @@ const employeeSchema = new mongoose.Schema(
     // reportingManager: {  },
     reportingManager: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Employee_Table", // 🔥 THIS IS THE KEY
+      ref: "Employee_Table", //  THIS IS THE KEY
       default: null
     },
 
