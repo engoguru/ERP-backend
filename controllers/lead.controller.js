@@ -147,7 +147,10 @@ export const leadViewOne = async (req, res, next) => {
     let lead = await leadModel.findById({_id:id}).populate({
         path: "whoAssignedwho.assignedTo",
         select: "name employeeCode"
-      })
+      }).populate({
+        path: "whoAssignedwho.assignedBy",
+        select: "name employeeCode"
+      }) 
       .populate({
         path: "followUp.addedBy",
         select: "name employeeCode"
