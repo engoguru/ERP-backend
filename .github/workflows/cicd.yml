@@ -126,4 +126,5 @@ jobs:
           -e MONGO_URI=${{ secrets.MONGO_URI }} \
           -e REDIS_URL=${{ secrets.REDIS_URL }} \
           -e PORT=${{ secrets.PORT }} \
+          -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
           ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }}
