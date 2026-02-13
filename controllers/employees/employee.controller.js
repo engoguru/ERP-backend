@@ -823,11 +823,18 @@ export const loginEmployee = async (req, res) => {
 
     // Set JWT cookie
 
+    // res.cookie("companyKey_keys", companyKey, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: "lax",
+    //   maxAge: 24 * 60 * 60 * 1000
+    // });
     res.cookie("companyKey_keys", companyKey, {
-      httpOnly: true,
-      secure: false,
+      httpOnly: true,          // cannot be accessed by client-side JS
+      secure: true,            // send only over HTTPS
       sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000
+      domain: ".ngoguru.info",         // protects against CSRF, allows top-level navigation
+      maxAge: 24 * 60 * 60 * 1000  // 1 day in milliseconds
     });
     // ===== Attendance =====
     const { startUTC, endUTC } = getISTDayRangeUTC();
