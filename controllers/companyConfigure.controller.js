@@ -58,6 +58,7 @@ export const companyConfigureCreate = async (req, res, next) => {
 
 export const companyConfigureUpdate = async (req, res, next) => {
   try {
+    // console.log(req.body)
     const { role, employeeCode } = req.user;
 
     if (role !== "Admin") {
@@ -151,7 +152,9 @@ export const companyConfigureUpdate = async (req, res, next) => {
       }
     });
 
-
+    if (req.body.leadForm) {
+      existingConfig.leadForm = req.body.leadForm
+    }
     // const incomingPermissions = req.body.permissions || [];
 
     // // Combine without duplicates (optional behavior)
@@ -182,12 +185,12 @@ export const companyConfigureUpdate = async (req, res, next) => {
     //   success: true,
     //   data: updatedConfig
     // });
-await existingConfig.save();
+    await existingConfig.save();
 
-return res.status(200).json({
-  success: true,
-  data: existingConfig
-});
+    return res.status(200).json({
+      success: true,
+      data: existingConfig
+    });
 
   } catch (error) {
     if (error.code === 11000) {

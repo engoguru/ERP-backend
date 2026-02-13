@@ -3,6 +3,49 @@ import EmployeeModel from "../models/employees/employee.model.js";
 import leadModel from "../models/lead.model.js";
 import mongoose from "mongoose";
 
+
+
+
+export const leadCreateInside = async (req, res, next) => {
+  try {
+    if (!req.body || Object.keys(req.body).length === 0) {
+      const error = new Error("Request body cannot be empty");
+      error.statusCode = 400;
+      return next(error);
+    }
+    // console.log(req.user,"rf")
+    // const { employeeCode } = req.user;
+
+    // const licenseData = await EmployeeModel
+    //   .findOne({ employeeCode })
+    //   .populate("licenseId", "_id")
+    //   .lean();
+    // console.log(req.body)
+    // if (!req.body.licenseId) {
+    //   const error = new Error("License not found");
+    //   return next(error);
+    // }
+
+    // const id = licenseData._id;
+    //     const checkLicense=await LicenseModel.findOne({
+    // licenseId:id})
+    // console.log(checkLicense,"popo")
+
+    // Simply save fields key=>value directly
+    const newLead = await leadModel.create({
+      licenseId:req.user.licenseId,
+      fields: req.body
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: newLead
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const leadCreate = async (req, res, next) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -11,24 +54,28 @@ export const leadCreate = async (req, res, next) => {
       return next(error);
     }
 
-    const { employeeCode } = req.user;
+    // const { employeeCode } = req.user;
 
-    const licenseData = await EmployeeModel
-      .findOne({ employeeCode })
-      .populate("licenseId", "_id")
-      .lean();
-
-    if (!licenseData?.licenseId) {
+    // const licenseData = await EmployeeModel
+    //   .findOne({ employeeCode })
+    //   .populate("licenseId", "_id")
+    //   .lean();
+    // console.log(req.body)
+    if (!req.body.licenseId) {
       const error = new Error("License not found");
       return next(error);
     }
 
-    const id = licenseData.licenseId._id;
+    const id = req.body.licenseId;
+    const checkLicense = await LicenseModel.findOne({
+      licenseId: id
+    })
+    // console.log(checkLicense,"popo")
 
     // Simply save fields key=>value directly
     const newLead = await leadModel.create({
-      licenseId: id,
-      fields: req.body
+      licenseId: checkLicense?._id,
+      fields: req.body.fields
     });
 
     return res.status(201).json({
@@ -116,7 +163,7 @@ export const leadView = async (req, res, next) => {
       .limit(itemsPerPage)
       .lean();
 
-      // console.log(leads,"ppp")
+    // console.log(leads,"ppp")
     return res.status(200).json({
       success: true,
       page,
@@ -144,13 +191,13 @@ export const leadViewOne = async (req, res, next) => {
     }
 
     // Fetch lead with all normal populates
-    let lead = await leadModel.findById({_id:id}).populate({
-        path: "whoAssignedwho.assignedTo",
-        select: "name employeeCode"
-      }).populate({
-        path: "whoAssignedwho.assignedBy",
-        select: "name employeeCode"
-      }) 
+    let lead = await leadModel.findById({ _id: id }).populate({
+      path: "whoAssignedwho.assignedTo",
+      select: "name employeeCode"
+    }).populate({
+      path: "whoAssignedwho.assignedBy",
+      select: "name employeeCode"
+    })
       .populate({
         path: "followUp.addedBy",
         select: "name employeeCode"
@@ -162,7 +209,7 @@ export const leadViewOne = async (req, res, next) => {
       error.statusCode = 404;
       return next(error);
     }
-// console.log(lead,"oppoo")
+    // console.log(lead,"oppoo")
     // Post-process assignments: populate assignedBy only if logged-in user
     lead.whoAssignedwho = await Promise.all(
       lead.whoAssignedwho.map(async (a) => {
@@ -190,29 +237,29 @@ export const leadViewOne = async (req, res, next) => {
 
 
 export const leadDelete = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        if (!id) {
-            const error = new Error("Lead ID is required");
-            error.statusCode = 400;
-            return next(error);
-        }
-
-        const deletedLead = await leadModel.findByIdAndDelete(id);
-
-        if (!deletedLead) {
-            const error = new Error("Lead not found");
-            error.statusCode = 404;
-            return next(error);
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Lead deleted successfully"
-        });
-    } catch (error) {
-        return next(error);
+  try {
+    const { id } = req.params;
+    if (!id) {
+      const error = new Error("Lead ID is required");
+      error.statusCode = 400;
+      return next(error);
     }
+
+    const deletedLead = await leadModel.findByIdAndDelete(id);
+
+    if (!deletedLead) {
+      const error = new Error("Lead not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead deleted successfully"
+    });
+  } catch (error) {
+    return next(error);
+  }
 };
 
 
@@ -220,9 +267,9 @@ export const leadDelete = async (req, res, next) => {
 
 // export const  leadCreate=async(req,res,next)=>{
 //     try {
-        
+
 //     } catch (error) {
-        
+
 //     }
 // }
 
@@ -241,7 +288,7 @@ export const leadDashboard = async (req, res) => {
 
     const [
       totalleads,
-      monthlyleads 
+      monthlyleads
     ] = await Promise.all([
       leadModel.countDocuments({ licenseId }),
 
@@ -271,12 +318,12 @@ export const leadDashboard = async (req, res) => {
 };
 
 
-export const verifyMeta=async(req,res)=>{
+export const verifyMeta = async (req, res) => {
   try {
-    const mode=req.query["hub.mode"];
-    const token=req.query["hub.verify_token"];
-    const challenge=req.query["hub.challenge"];
-    if(mode==="Subscribe"  &&  token===process.env.Meta_Token){
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+    if (mode === "Subscribe" && token === process.env.Meta_Token) {
       return res.status(200).send(challenge)
     }
 
@@ -287,6 +334,7 @@ export const verifyMeta=async(req,res)=>{
 }
 
 import axios from "axios";
+import LicenseModel from "../models/license.model.js";
 
 
 export const metaLeadStore = async (req, res) => {
@@ -295,7 +343,7 @@ export const metaLeadStore = async (req, res) => {
     if (!leadId) return res.sendStatus(200);
 
     // Get licenseId dynamically (query param or map by page/form)
-    const licenseId = req.query.licenseId; 
+    const licenseId = req.query.licenseId;
     if (!licenseId) return res.status(400).send("licenseId required");
 
     // Fetch lead data from Meta
