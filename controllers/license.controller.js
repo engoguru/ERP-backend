@@ -248,12 +248,12 @@ export const licenseValidateToAdmin = async (req, res, next) => {
         //     maxAge: 24 * 60 * 60 * 1000
         // });
 
-        res.cookie("companyAdminKey", companyKey, {
-            httpOnly: true,          // cannot be accessed by client-side JS
-            secure: true,            // send only over HTTPS
-            sameSite: "lax", 
-             domain: ".ngoguru.info",        // protects against CSRF, allows top-level navigation
-            maxAge: 24 * 60 * 60 * 1000  // 1 day in milliseconds
+        res.cookie("companyKey_keys", companyKey, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",       // must be NONE for cross-subdomain requests
+            domain: ".ngoguru.info",
+            maxAge: 24 * 60 * 60 * 1000
         });
         return res.status(200).json({
             success: true,
