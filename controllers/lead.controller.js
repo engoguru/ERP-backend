@@ -149,11 +149,14 @@ export const leadView = async (req, res, next) => {
     let query = { licenseId };
 
     // Role-based filtering
-    if (role !== "Admin") {
-      query.whoAssignedwho = {
-        $elemMatch: { assignedTo: employeeId }
-      };
-    }
+const unrestrictedRoles = ["Admin", "Digital Marketer"];
+
+if (!unrestrictedRoles.includes(role)) {
+  query.whoAssignedwho = {
+    $elemMatch: { assignedTo: employeeId }
+  };
+}
+
 
     const total = await leadModel.countDocuments(query);
 
