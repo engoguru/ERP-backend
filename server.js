@@ -44,9 +44,12 @@ const PORT = process.env.PORT || 5000;
 //   "https://ngoguru.in/"
 // ];
 const allowedOrigins = [
-  "http://localhost:5173",
-  "http://13.205.63.37:5173",
-  "https://ngoguru.in"
+  "http://localhost:5173",      // for local dev
+  "http://13.205.63.37:5173",  // direct EC2 access (dev/testing)
+  "https://ngoguru.in",        // production domain without www
+  "https://www.ngoguru.in",    // production domain with www
+  "https://ngoguru.info",      // main production domain
+  "https://www.ngoguru.info"   // www production domain
 ];
 
 app.use(cors({
