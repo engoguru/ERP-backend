@@ -38,9 +38,15 @@ const PORT = process.env.PORT || 5000;
 // }
 
 // ────────── GLOBAL MIDDLEWARE ──────────
+// const allowedOrigins = [
+//   "http://localhost:5173",
+//   "http://13.205.63.37:5173",
+//   "https://ngoguru.in/"
+// ];
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://13.205.63.37:5173"
+  "http://13.205.63.37:5173",
+  "https://ngoguru.in"
 ];
 
 app.use(cors({
