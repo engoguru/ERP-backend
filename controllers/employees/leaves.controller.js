@@ -64,13 +64,13 @@ export const leavesCreate = async (req, res) => {
       month: d.month,
       year: d.year
     }));
-// console.log(leaveDocs,"opp")
+    // console.log(leaveDocs,"opp")
     // Save each month-wise leave
     const savedLeaves = [];
     for (const doc of leaveDocs) {
       // console.log(doc,"ppp")
-      doc.employeeId=req.user.id;
-      doc.licenseId=req.user.licenseId;
+      doc.employeeId = req.user.id;
+      doc.licenseId = req.user.licenseId;
       const leave = new leavesModel(doc);
       const saved = await leave.save(); // triggers pre-save hook
       savedLeaves.push(saved);
@@ -97,7 +97,7 @@ export const leavesUpdate = async (req, res, next) => {
     if (!id || !isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid Leave ID" });
     }
-
+console.log(status,"oo")
     const updatedLeave = await leavesModel.findByIdAndUpdate(
       id,
       {
@@ -134,13 +134,13 @@ export const leavesViewOne = async (req, res, next) => {
     if (!id || !isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid Leave ID" });
     }
-  // .populate("licenseId");
+    // .populate("licenseId");
     const leave = await leavesModel
       .findById(id)
       .populate("employeeId", "name email")
       .populate("approvedBy", "name email")
-     
-// console.log(leave,id)
+
+    // console.log(leave,id)
     if (!leave) {
       return res.status(404).json({ message: "Leave not found" });
     }
@@ -155,24 +155,21 @@ export const leavesViewOne = async (req, res, next) => {
 };
 
 
+
+
 export const leavesView = async (req, res, next) => {
   try {
-    const {
-      page = 1,
-      limit = 100,
-      employeeId,
-      status
-    } = req.query;
-    const {licenseId}=req.user;
+    const { page = 1, limit = 100, employeeId, status } = req.query;
+    const { licenseId } = req.user;
 
     const filter = {};
 
-    if (licenseId && isValidObjectId(licenseId)) {
-      filter.licenseId = licenseId;
+    if (licenseId) {
+      filter.licenseId = new mongoose.Types.ObjectId(licenseId);
     }
 
-    if (employeeId && isValidObjectId(employeeId)) {
-      filter.employeeId = employeeId;
+    if (employeeId) {
+      filter.employeeId = new mongoose.Types.ObjectId(employeeId);
     }
 
     if (status) {
@@ -181,23 +178,26 @@ export const leavesView = async (req, res, next) => {
 
     const leaves = await leavesModel
       .find(filter)
+      .populate("employeeId", "name email")
+      .populate("approvedBy", "name email")
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .sort({ createdAt: -1 });
+      .limit(Number(limit));
 
-    const total = await leavesModel.countDocuments({licenseId:licenseId});
+    const total = await leavesModel.countDocuments(filter);
 
     return res.status(200).json({
       success: true,
       total,
       page: Number(page),
       limit: Number(limit),
-      data: leaves
+      data: leaves,
     });
   } catch (error) {
     next(error);
   }
 };
+
 
 
 

@@ -1,3 +1,4 @@
+import { generateUploadURL } from "../config/awsS3.js";
 import companyConfigureModel from "../models/companyConfigure.model.js";
 import EmployeeModel from "../models/employees/employee.model.js";
 import leadModel from "../models/lead.model.js";
@@ -33,8 +34,9 @@ export const leadCreateInside = async (req, res, next) => {
 
     // Simply save fields key=>value directly
     const newLead = await leadModel.create({
-      licenseId:req.user.licenseId,
-      fields: req.body
+      licenseId: req.user.licenseId,
+      fields: req.body,
+      source: "Portal"
     });
 
     return res.status(201).json({
@@ -54,7 +56,7 @@ export const leadCreate = async (req, res, next) => {
       return next(error);
     }
 
-    // const { employeeCode } = req.user;
+    // const { employeeCode } = req.user;0
 
     // const licenseData = await EmployeeModel
     //   .findOne({ employeeCode })
@@ -75,7 +77,8 @@ export const leadCreate = async (req, res, next) => {
     // Simply save fields key=>value directly
     const newLead = await leadModel.create({
       licenseId: checkLicense?._id,
-      fields: req.body.fields
+      fields: req.body.fields,
+      source: "Website"
     });
 
     return res.status(201).json({
@@ -87,86 +90,149 @@ export const leadCreate = async (req, res, next) => {
   }
 };
 
-export const leadUpdate = async (req, res, next) => {
-  try {
-    const { id } = req.params;
+// export const leadUpdate = async (req, res, next) => {
+//   try {
+//     const { id } = req.params;
 
-    if (!id) {
-      const error = new Error("Lead ID is required");
-      error.statusCode = 400;
-      return next(error);
-    }
+//     if (!id) {
+//       const error = new Error("Lead ID is required");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
 
-    // Build update object — update fields dynamically
-    const updateData = req.body;
+//     // Build update object — update fields dynamically
+//     const updateData = req.body;
 
-    const updatedLead = await leadModel.findOneAndUpdate(
-      { _id: id },      // filter by licenseId
-      { $set: updateData },   // merge fields instead of overwriting
-      {
-        new: true,            // return updated document
-        runValidators: true   // enforce schema validators
-      }
-    );
+//     const updatedLead = await leadModel.findOneAndUpdate(
+//       { _id: id },      // filter by licenseId
+//       { $set: updateData },   // merge fields instead of overwriting
+//       {
+//         new: true,            // return updated document
+//         runValidators: true   // enforce schema validators
+//       }
+//     );
 
-    if (!updatedLead) {
-      const error = new Error("Lead not found");
-      error.statusCode = 404;
-      return next(error);
-    }
+//     if (!updatedLead) {
+//       const error = new Error("Lead not found");
+//       error.statusCode = 404;
+//       return next(error);
+//     }
 
-    return res.status(200).json({
-      success: true,
-      data: updatedLead
-    });
-  } catch (error) {
-    return next(error);
-  }
-};
+//     return res.status(200).json({
+//       success: true,
+//       data: updatedLead
+//     });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 
 
+// export const leadView = async (req, res, next) => {
+//   try {
+//     console.log(req.query.searchItem)
+//     const page = parseInt(req.query.page) || 1;
+//     const itemsPerPage = parseInt(req.query.itemsPerPage) || 50;
+//     const skip = (page - 1) * itemsPerPage;
+
+//     const { employeeCode, id: employeeId, role,licenseId } = req.user;
+
+  
+//     // Base query
+//     let query = { licenseId };
+
+//     // Role-based filtering
+//     const unrestrictedRoles = ["Admin", "Digital Marketer"];
+
+//     if (!unrestrictedRoles.includes(role)) {
+//       query.whoAssignedwho = {
+//         $elemMatch: { assignedTo: employeeId }
+//       };
+//     }
+
+
+//     const total = await leadModel.countDocuments(query);
+
+//     const leads = await leadModel
+//       .find(query)
+//       .skip(skip)
+//       .limit(itemsPerPage)
+//       .lean();
+
+//     // console.log(leads,"ppp")
+//     return res.status(200).json({
+//       success: true,
+//       page,
+//       itemsPerPage,
+//       total,
+//       totalPages: Math.ceil(total / itemsPerPage),
+//       data: leads
+//     });
+
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 export const leadView = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const itemsPerPage = parseInt(req.query.itemsPerPage) || 50;
+    const itemsPerPage = parseInt(req.query.itemsPerPage) || 10;
     const skip = (page - 1) * itemsPerPage;
 
-    const { employeeCode, id: employeeId, role } = req.user;
+    const { search, status, date } = req.query;
+    const { id: employeeId, role, licenseId } = req.user;
 
-    // Get licenseId for logged-in employee
-    const licenseData = await EmployeeModel
-      .findOne({ employeeCode })
-      .populate("licenseId", "_id")
-      .lean();
-
-    if (!licenseData?.licenseId) {
-      return next(new Error("License not found"));
-    }
-
-    const licenseId = licenseData.licenseId._id;
-
-    // Base query
     let query = { licenseId };
 
-    // Role-based filtering
-const unrestrictedRoles = ["Admin", "Digital Marketer"];
+    // ---------------- ROLE FILTER ----------------
+    const unrestrictedRoles = ["Admin", "Digital Marketer"];
 
-if (!unrestrictedRoles.includes(role)) {
-  query.whoAssignedwho = {
-    $elemMatch: { assignedTo: employeeId }
-  };
-}
+    if (!unrestrictedRoles.includes(role)) {
+      query.whoAssignedwho = {
+        $elemMatch: { assignedTo: employeeId }
+      };
+    }
 
+    // ---------------- SEARCH (FIXED) ----------------
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+
+      query.$or = [
+        { "fields.Name": searchRegex },
+        { "fields.Email": searchRegex },
+        { "fields.Contact": searchRegex },
+        { "fields.description": searchRegex },
+        { "fields.status": searchRegex },
+        { source: searchRegex }
+      ];
+    }
+
+    // ---------------- STATUS FILTER ----------------
+    if (status) {
+      query["fields.status"] = status;
+    }
+
+    // ---------------- DATE FILTER ----------------
+    if (date) {
+      const start = new Date(date);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+
+      query.createdAt = {
+        $gte: start,
+        $lte: end
+      };
+    }
 
     const total = await leadModel.countDocuments(query);
 
     const leads = await leadModel
       .find(query)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(itemsPerPage)
       .lean();
 
-    // console.log(leads,"ppp")
     return res.status(200).json({
       success: true,
       page,
@@ -193,45 +259,59 @@ export const leadViewOne = async (req, res, next) => {
       return next(error);
     }
 
-    // Fetch lead with all normal populates
-    let lead = await leadModel.findById({ _id: id }).populate({
-      path: "whoAssignedwho.assignedTo",
-      select: "name employeeCode"
-    }).populate({
-      path: "whoAssignedwho.assignedBy",
-      select: "name employeeCode"
-    })
+    // Fetch lead
+    let lead = await leadModel.findById(id)
+      .populate({
+        path: "whoAssignedwho.assignedTo",
+        select: "name employeeCode"
+      })
+      .populate({
+        path: "whoAssignedwho.assignedBy",
+        select: "name employeeCode"
+      })
       .populate({
         path: "followUp.addedBy",
         select: "name employeeCode"
       })
       .lean();
 
+    // FIRST check if lead exists
     if (!lead) {
       const error = new Error("Lead not found");
       error.statusCode = 404;
       return next(error);
     }
-    // console.log(lead,"oppoo")
-    // Post-process assignments: populate assignedBy only if logged-in user
-    lead.whoAssignedwho = await Promise.all(
-      lead.whoAssignedwho.map(async (a) => {
-        if (a.assignedBy === employeeId) {
-          // Populate logged-in user's assignedBy
-          const assignedByObj = await EmployeeModel
-            .findById(a.assignedBy)
-            .select("name employeeCode")
-            .lean();
-          return { ...a, assignedBy: assignedByObj };
-        }
-        return a; // keep ID for others
-      })
-    );
+// console.log(lead)
+  //Safely generate URLs for confirmed files (overwrite existing url)
+if (lead?.OnConfirmed) {
+  await Promise.all(
+    lead?.OnConfirmed[0]?.OnConfirmedFiles?.map(async (file) => {
+      file.url = await generateUploadURL(file.public_id);
+      
+    })
+  );
+}
+
+
+    //  Post-process assignments
+    if (lead?.whoAssignedwho?.length) {
+      lead.whoAssignedwho = await Promise.all(
+        lead.whoAssignedwho.map(async (a) => {
+          // Since you already populated assignedBy,
+          // this comparison must use _id
+          if (a.assignedBy?._id?.toString() === employeeId.toString()) {
+            return a; // already populated
+          }
+          return a;
+        })
+      );
+    }
 
     return res.status(200).json({
       success: true,
       data: lead
     });
+
   } catch (error) {
     return next(error);
   }
@@ -265,6 +345,86 @@ export const leadDelete = async (req, res, next) => {
   }
 };
 
+// export const leadUpdate = async (req, res, next) => {
+//   // console.log(req.body, "Received request body");
+
+//   try {
+//     const { id } = req.params;
+//     if (!id) {
+//       const error = new Error("Lead ID is required");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+//     // Parse fields if it's a string
+//     if (req.body.fields && typeof req.body.fields === "string") {
+//       try {
+//         req.body.fields = JSON.parse(req.body.fields);
+//       } catch (err) {
+//         const error = new Error("Invalid JSON format for fields");
+//         error.statusCode = 400;
+//         return next(error);
+//       }
+//     }
+
+//     let { OnConfirmed, ...otherFields } = req.body;
+
+//     // Parse OnConfirmed.contact if it's a string
+//     if (OnConfirmed?.contact && typeof OnConfirmed.contact === "string") {
+//       try {
+//         OnConfirmed.contact = JSON.parse(OnConfirmed.contact);
+
+//       } catch (err) {
+//         const error = new Error("Invalid JSON format for OnConfirmed.contact");
+//         error.statusCode = 400;
+//         return next(error);
+//       }
+//     }
+
+
+
+//     // Build update query
+//     if (OnConfirmed) {
+//       // Ensure addedBy is an object
+//       if (!OnConfirmed.addedBy || typeof OnConfirmed.addedBy === "string") {
+//         OnConfirmed.addedBy = { userId: OnConfirmed.addedBy || req.user.id, name: req.user.name };
+//       } else {
+//         // If object exists, safely set properties
+//         OnConfirmed.addedBy.userId = req.user.id;
+//         OnConfirmed.addedBy.name = req.user.name;
+//       }
+//     }
+
+//     const updateQuery = {};
+//     if (Object.keys(otherFields).length > 0) updateQuery.$set = otherFields;
+//     if (OnConfirmed) {
+//       updateQuery.$push = {
+//         OnConfirmed: Array.isArray(OnConfirmed) ? { $each: OnConfirmed } : { $each: [OnConfirmed] }
+//       };
+//     }
+
+//     // Execute update
+//     const updatedLead = await leadModel.findByIdAndUpdate(
+//       id,
+//       updateQuery,
+//       { new: true, runValidators: true }
+//     );
+
+//     if (!updatedLead) {
+//       const error = new Error("Lead not found");
+//       error.statusCode = 404;
+//       return next(error);
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       data: updatedLead
+//     });
+
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 
 
 
@@ -276,6 +436,134 @@ export const leadDelete = async (req, res, next) => {
 //     }
 // }
 
+export const leadUpdate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Lead ID is required"
+      });
+    }
+
+    // -----------------------------
+    // Parse fields if string
+    // -----------------------------
+    if (req.body.fields && typeof req.body.fields === "string") {
+      try {
+        req.body.fields = JSON.parse(req.body.fields);
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format for fields"
+        });
+      }
+    }
+
+    let { OnConfirmed, ...otherFields } = req.body;
+
+    // -----------------------------
+    // Parse OnConfirmed if string
+    // -----------------------------
+    if (OnConfirmed && typeof OnConfirmed === "string") {
+      try {
+        OnConfirmed = JSON.parse(OnConfirmed);
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format for OnConfirmed"
+        });
+      }
+    }
+
+    // -----------------------------
+    // Parse OnConfirmed.contact if string
+    // -----------------------------
+    if (OnConfirmed?.contact && typeof OnConfirmed.contact === "string") {
+      try {
+        OnConfirmed.contact = JSON.parse(OnConfirmed.contact);
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format for OnConfirmed.contact"
+        });
+      }
+    }
+
+    // -----------------------------
+    // Build Update Query
+    // -----------------------------
+    const updateQuery = {};
+
+    // Update normal fields
+    if (Object.keys(otherFields).length > 0) {
+      updateQuery.$set = otherFields;
+    }
+
+    // -----------------------------
+    // Check if OnConfirmed has at least one valid field
+    // -----------------------------
+    if (OnConfirmed && typeof OnConfirmed === "object") {
+      const hasValidData = Object.values(OnConfirmed).some((value) => {
+        if (Array.isArray(value)) return value.length > 0;
+
+        if (typeof value === "object" && value !== null) {
+          return Object.values(value).some(
+            (v) => v !== "" && v !== null && v !== undefined
+          );
+        }
+
+        return value !== "" && value !== null && value !== undefined;
+      });
+
+      if (hasValidData) {
+        // Add addedBy info
+        OnConfirmed.addedBy = {
+          userId: req.user?.id,
+          name: req.user?.name
+        };
+
+        updateQuery.$push = {
+          OnConfirmed: { $each: [OnConfirmed] }
+        };
+      }
+    }
+
+    // If nothing to update
+    if (Object.keys(updateQuery).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update"
+      });
+    }
+
+    // -----------------------------
+    // Execute Update
+    // -----------------------------
+    const updatedLead = await leadModel.findByIdAndUpdate(
+      id,
+      updateQuery,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedLead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead updated successfully",
+      data: updatedLead
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 export const leadDashboard = async (req, res) => {

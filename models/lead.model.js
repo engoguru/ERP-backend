@@ -1,4 +1,29 @@
+
 import mongoose from "mongoose";
+
+const OnConfirmedSchema = new mongoose.Schema({
+  contact: {
+    name: String,
+    phone: String,
+  },
+  totalAmount: Number,
+  paidAmount: Number,
+  unpaidAmount: Number,
+  nameOfService: String,
+  description: String,
+  OnConfirmedFiles: [
+    {
+      public_id: String,
+      url: String,
+    },
+  ],
+  addedBy: {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee_Table" },
+    name: String,
+  },
+  date: { type: Date, default: Date.now },
+});
+
 
 const leadSchema = new mongoose.Schema({
     licenseId: {
@@ -14,6 +39,11 @@ const leadSchema = new mongoose.Schema({
     type: Map,
     of: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  source:{
+ type:String,
+  required:true,
+  trim:true
   },
   whoAssignedwho: [
     {
@@ -52,6 +82,7 @@ const leadSchema = new mongoose.Schema({
       },
     },
   ],
+OnConfirmed:[OnConfirmedSchema]
 
 }, { timestamps: true });
 
