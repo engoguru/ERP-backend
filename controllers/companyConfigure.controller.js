@@ -125,32 +125,58 @@ export const companyConfigureUpdate = async (req, res, next) => {
 
 
     // Merge permissions (push new ones)
+    // const incomingPermissions = req.body.permissions || [];
+
+    // incomingPermissions.forEach((incomingPerm) => {
+    //   const existingPerm = existingConfig.permissions.find(
+    //     (p) =>
+    //       p.department === incomingPerm.department &&
+    //       p.roleName === incomingPerm.roleName
+    //   );
+
+    //   if (existingPerm) {
+    //     // Add only new permissions
+    //     incomingPerm.permission.forEach((perm) => {
+    //       // if (!existingPerm.permission.includes(perm)) {
+    //         existingPerm.permission.push(perm);
+    //       // }
+    //     });
+    //   } else {
+    //     // New role permission
+    //     existingConfig.permissions.push({
+    //       department: incomingPerm.department,
+    //       roleName: incomingPerm.roleName,
+    //       permission: incomingPerm.permission,
+    //       _id: incomingPerm._id || new mongoose.Types.ObjectId()
+    //     });
+    //   }
+    // });
+
+    // Incoming permissions from request
     const incomingPermissions = req.body.permissions || [];
 
+    // Replace existing permissions with incoming ones
     incomingPermissions.forEach((incomingPerm) => {
-      const existingPerm = existingConfig.permissions.find(
+      const existingIndex = existingConfig.permissions.findIndex(
         (p) =>
           p.department === incomingPerm.department &&
           p.roleName === incomingPerm.roleName
       );
 
-      if (existingPerm) {
-        // Add only new permissions
-        incomingPerm.permission.forEach((perm) => {
-          if (!existingPerm.permission.includes(perm)) {
-            existingPerm.permission.push(perm);
-          }
-        });
+      if (existingIndex !== -1) {
+        // Overwrite the permissions array completely
+        existingConfig.permissions[existingIndex].permission = incomingPerm.permission;
       } else {
-        // New role permission
+        // Add new role permission
         existingConfig.permissions.push({
           department: incomingPerm.department,
           roleName: incomingPerm.roleName,
           permission: incomingPerm.permission,
-          _id: incomingPerm._id || new mongoose.Types.ObjectId()
+          _id: incomingPerm._id || new mongoose.Types.ObjectId(),
         });
       }
     });
+
 
     if (req.body.leadForm) {
       existingConfig.leadForm = req.body.leadForm

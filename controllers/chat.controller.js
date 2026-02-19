@@ -55,7 +55,7 @@ Rules:
         const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
         const result = await model.generateContent(prompt);
         const reply = result.response.text();
-        console.log(result)
+        // console.log(result)
 
         // Save user message + AI reply in chat memory (keep last 5)
         chatMemory[userId] = [

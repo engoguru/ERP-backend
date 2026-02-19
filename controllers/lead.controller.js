@@ -137,7 +137,7 @@ export const leadCreate = async (req, res, next) => {
 
 //     const { employeeCode, id: employeeId, role,licenseId } = req.user;
 
-  
+
 //     // Base query
 //     let query = { licenseId };
 
@@ -179,9 +179,9 @@ export const leadView = async (req, res, next) => {
     const itemsPerPage = parseInt(req.query.itemsPerPage) || 10;
     const skip = (page - 1) * itemsPerPage;
 
-    const { search, status, date } = req.query;
+    const { search, status, date, assigned } = req.query;
     const { id: employeeId, role, licenseId } = req.user;
-
+    // console.log(assigned, "pp")
     let query = { licenseId };
 
     // ---------------- ROLE FILTER ----------------
@@ -210,6 +210,16 @@ export const leadView = async (req, res, next) => {
     // ---------------- STATUS FILTER ----------------
     if (status) {
       query["fields.status"] = status;
+    }
+    if (assigned === "assigned") {
+      query.whoAssignedwho = { $exists: true, $ne: [] };
+    }
+
+    if (assigned === "unassigned") {
+      query.$or = [
+        { whoAssignedwho: { $exists: false } },
+        { whoAssignedwho: { $size: 0 } }
+      ];
     }
 
     // ---------------- DATE FILTER ----------------
@@ -281,16 +291,29 @@ export const leadViewOne = async (req, res, next) => {
       error.statusCode = 404;
       return next(error);
     }
-// console.log(lead)
-  //Safely generate URLs for confirmed files (overwrite existing url)
-if (lead?.OnConfirmed) {
-  await Promise.all(
-    lead?.OnConfirmed[0]?.OnConfirmedFiles?.map(async (file) => {
-      file.url = await generateUploadURL(file.public_id);
-      
-    })
-  );
-}
+    // console.log(lead)
+    //Safely generate URLs for confirmed files (overwrite existing url)
+    // if (lead?.OnConfirmed) {
+    //   await Promise.all(
+    //     lead?.OnConfirmed[0]?.OnConfirmedFiles?.map(async (file) => {
+    //       file.url = await generateUploadURL(file.public_id);
+
+    //     })
+    //   );
+    // }
+    if (lead?.OnConfirmed?.length) {
+      await Promise.all(
+        lead.OnConfirmed.map(async (confirmedItem) => {
+          if (confirmedItem?.OnConfirmedFiles?.length) {
+            await Promise.all(
+              confirmedItem.OnConfirmedFiles.map(async (file) => {
+                file.url = await generateUploadURL(file.public_id);
+              })
+            );
+          }
+        })
+      );
+    }
 
 
     //  Post-process assignments
@@ -667,5 +690,58 @@ export const metaLeadStore = async (req, res) => {
   } catch (error) {
     console.error("Error saving lead:", error.message);
     res.sendStatus(500);
+  }
+};
+
+
+
+
+
+export const bulkLeadAssign = async (req, res) => {
+  try {
+    const { id } = req.user; // logged-in user
+    const { leadIds, assignedTo } = req.body;
+
+    // Validation
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No leads selected",
+      });
+    }
+
+    if (!assignedTo) {
+      return res.status(400).json({
+        success: false,
+        message: "Assigned employee is required",
+      });
+    }
+
+    // Bulk update
+   const result = await leadModel.updateMany(
+  { _id: { $in: leadIds } },
+  {
+    $push: {
+      whoAssignedwho: {
+        assignedTo: assignedTo,
+        assignedBy: id,
+        assignedAt: new Date(),
+      },
+    },
+  }
+);
+
+// console.log(result,"ogo")
+    return res.status(200).json({
+      success: true,
+      message: "Leads assigned successfully",
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Bulk Assign Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
   }
 };
