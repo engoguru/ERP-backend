@@ -11,6 +11,7 @@ import { checkIpAllowed } from "../../utils/verifyNetwork.js";
 import redis from "../../config/redis.js";
 import AttendanceModel from "../../models/employees/attendance.model.js";
 import LicenseModel from "../../models/license.model.js";
+import Role from "../../models/role.model.js";
 // import { verifyNetwork } from "../../utils/verifyNetwork.js";
 
 
@@ -230,6 +231,42 @@ export const updateEmployee = async (req, res) => {
       }
     }
 
+ const user = await EmployeeModel.findById(employeeId);
+
+if ("roleID" in req.body) {
+  // roleID is included in payload (could be null or a new role)
+  const oldRoleID = user?.roleID || null;
+  const newRoleID = req.body.roleID;
+
+  if (newRoleID && !mongoose.Types.ObjectId.isValid(newRoleID)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid roleID",
+    });
+  }
+
+  if (oldRoleID?.toString() !== newRoleID) {
+    // Update new role assign if provided
+    if (newRoleID) {
+      await Role.updateOne({ _id: newRoleID }, { $set: { assign: true } });
+    }
+
+    // Remove old role assign if exists
+    if (oldRoleID) {
+      await Role.updateOne({ _id: oldRoleID }, { $set: { assign: false } });
+    }
+  }
+
+  // Set the new role (could be null)
+  req.body.roleID = newRoleID;
+} else {
+if (user?.roleID) {
+   await Role.updateOne({ _id: user.roleID }, { $set: { assign: false } }); 
+  }
+   req.body.roleID = null;
+}
+
+
     if (req.body.reportingManager?._id) {
       req.body.reportingManager._id = new mongoose.Types.ObjectId(
         req.body.reportingManager._id
@@ -255,6 +292,7 @@ export const updateEmployee = async (req, res) => {
 
 
     // ----------  UPDATE EMPLOYEE ----------
+    console.log(req.body, "gerui")
     const updatedEmployee = await EmployeeModel.findByIdAndUpdate(
       employeeId,
       req.body, // same as create, directly $set req.body
@@ -749,10 +787,246 @@ const getISTDayRangeUTC = () => {
 };
 
 // ===== LOGIN EMPLOYEE =====
+// export const loginEmployee = async (req, res) => {
+//   try {
+//     const { email, contact, licenseId } = req.body;
+
+//     if (!email || !contact || !licenseId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email, contact, and licenseId are required",
+//       });
+//     }
+
+//     const checkEmployee = await EmployeeModel.findOne({
+//       "employeeEmail.email": email,
+//       "employeeContact.contact": contact,
+//     }).populate("licenseId", "licenseId expiresAt companyName _id");
+
+//     if (!checkEmployee) {
+//       return res.status(404).json({ success: false, message: "Employee not found" });
+//     }
+
+//     if (checkEmployee?.licenseId?.licenseId !== licenseId) {
+//       return res.status(403).json({ success: false, message: "License ID does not match" });
+//     }
+
+//     const companyConfig = await companyConfigureModel.findOne({
+//       licenseId: checkEmployee.licenseId._id,
+//     });
+
+//     const matchedPermission = companyConfig?.permissions.find(
+//       (perm) =>
+//         perm.roleName?.trim().toLowerCase() === checkEmployee.role?.trim().toLowerCase() &&
+//         perm.department?.trim().toLowerCase() === checkEmployee.department?.trim().toLowerCase()
+//     );
+
+//     const permissionArray = matchedPermission ? matchedPermission.permission : [];
+
+//     if (!checkEmployee.licenseId?.expiresAt || new Date() > new Date(checkEmployee.licenseId.expiresAt)) {
+//       return res.status(403).json({ success: false, message: "License has expired" });
+//     }
+
+//     if (!checkEmployee.employeeEmail?.isVerified && !checkEmployee.employeeContact?.isVerified) {
+//       return res.status(403).json({ success: false, message: "Email or contact must be verified" });
+//     }
+
+//     // JWT generation
+//     const companyKey = jwt.sign(
+//       {
+//         id: checkEmployee._id,
+//         name: checkEmployee.name,
+//         employeeCode: checkEmployee.employeeCode,
+//         department: checkEmployee.department,
+//         role: checkEmployee.role,
+//         email: checkEmployee.employeeEmail.email,
+//         contact: checkEmployee.employeeContact.contact,
+//         status: checkEmployee.status,
+//         licenseId: checkEmployee.licenseId._id,
+//         permissionArray,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "24h" }
+//     );
+
+//     const redisKey = `employee:${checkEmployee._id}:token`;
+//     const existingToken = await redis.get(redisKey);
+
+//     if (!existingToken) {
+//       // First login → increment active users
+//       await incrementActiveUser(checkEmployee.licenseId._id);
+//     }
+
+//     await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60);
+
+//     // Set JWT cookie
+
+//     res.cookie("companyKey_keys", companyKey, {
+//       httpOnly: true,
+//       secure: false,
+//       sameSite: "lax",
+//       maxAge: 24 * 60 * 60 * 1000
+//     });
+//     // res.cookie("companyKey_keys", companyKey, {
+//     //   httpOnly: true,
+//     //   secure: true,
+//     //   sameSite: "none",       // must be NONE for cross-subdomain requests
+//     //   domain: ".ngoguru.info",
+//     //   maxAge: 24 * 60 * 60 * 1000
+//     // });
+//     // ===== Attendance =====
+//     const { startUTC, endUTC } = getISTDayRangeUTC();
+
+//     let attendance = await AttendanceModel.findOne({
+//       employeeId: checkEmployee._id,
+//       licenseId: checkEmployee.licenseId._id,
+//       date: { $gte: startUTC, $lte: endUTC },
+//     });
+
+//     if (!attendance) {
+//       // console.log("rgjrt")
+//       attendance = await AttendanceModel.create({
+//         employeeId: checkEmployee._id,
+//         licenseId: checkEmployee.licenseId._id,
+//         date: startUTC,
+//         inTime: new Date(),
+//         workingMinutes: 0,
+//         status: "PRESENT",
+//       });
+//     } else if (!attendance.inTime) {
+//       attendance.inTime = new Date();
+//       await attendance.save();
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Login successful (OTP test mode)",
+//       testOtp: "123456",
+//     });
+//   } catch (error) {
+//     console.error("loginEmployee error:", error);
+//     return res.status(500).json({ success: false, message: "Internal server error" });
+//   }
+// };
+
+
+// export const loginEmployee = async (req, res) => {
+//   try {
+//     const { email, contact, licenseId } = req.body;
+
+//     if (!email || !contact || !licenseId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email, contact, and licenseId are required",
+//       });
+//     }
+
+//     // 1️⃣ Get the License document
+//     const licenseDoc = await LicenseModel.findOne({ licenseId });
+//     if (!licenseDoc) {
+//       return res.status(404).json({ success: false, message: "License not found" });
+//     }
+// // console.log(licenseDoc,"1")
+//     // 2️⃣ Fetch the company configuration
+//     const companyConfig = await companyConfigureModel.findOne({ licenseId: licenseDoc._id });
+//     if (!companyConfig) {
+//       return res.status(404).json({ success: false, message: "Company configuration not found" });
+//     }
+// // console.log(companyConfig,"2")
+//     // 3️⃣ Find the assigned role with assign === true
+//     let assignedRole = null;
+//     for (const dept of companyConfig.roles) {
+//       const roleObj = dept.roles.find(
+//         (r) => r.email === email && r.phone === contact && r.assign === true
+//       );
+//       if (roleObj) {
+//         assignedRole = roleObj;
+//         break;
+//       }
+//     }
+
+//     if (!assignedRole) {
+//       return res.status(403).json({ success: false, message: "Role is not assigned" });
+//     }
+// // console.log(assignedRole,"3")
+//     // 4️⃣ Find the employee using roleId
+//     const employee = await EmployeeModel.findOne({ roleID: assignedRole._id });
+//     if (!employee) {
+//       return res.status(404).json({ success: false, message: "Employee not found" });
+//     }
+// // console.log(employee,"4")
+//     // 5️⃣ Check license expiry
+//     // if (!employee.licenseId?.expiresAt || new Date() > new Date(employee.licenseId.expiresAt)) {
+//     //   return res.status(403).json({ success: false, message: "License has expired" });
+//     // }
+
+//     // 6️⃣ Check email/contact verification
+//     if (!employee.employeeEmail?.isVerified && !employee.employeeContact?.isVerified) {
+//       return res.status(403).json({ success: false, message: "Email or contact must be verified" });
+//     }
+
+//     // 7️⃣ Get permissions for the role
+//     const matchedPermission = companyConfig.permissions.find(
+//       (perm) =>
+//         perm.roleName?.trim().toLowerCase() === assignedRole.role?.trim().toLowerCase() &&
+//         perm.department?.trim().toLowerCase() === employee.department?.trim().toLowerCase()
+//     );
+//     const permissionArray = matchedPermission ? matchedPermission.permission : [];
+// // console.log(matchedPermission,permissionArray,"5")
+//     // 8️⃣ Generate JWT
+//     const companyKey = jwt.sign(
+//       {
+//         id: employee._id,
+//         name: employee.name,
+//         employeeCode: employee.employeeCode,
+//         department: employee.department,
+//         role: assignedRole.role,
+//         roleId: assignedRole._id,
+//         email: employee.employeeEmail.email,
+//         contact: employee.employeeContact.contact,
+//         status: employee.status,
+//         licenseId: employee.licenseId._id,
+//         roleID:employee.roleID,
+//         permissionArray,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "24h" }
+//     );
+
+//     const redisKey = `employee:${employee._id}:token`;
+//     const existingToken = await redis.get(redisKey);
+
+//     if (!existingToken) {
+//       await incrementActiveUser(employee.licenseId._id);
+//     }
+
+//     await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60);
+
+//     res.cookie("companyKey_keys", companyKey, {
+//       httpOnly: true,
+//       secure: false,
+//       sameSite: "lax",
+//       maxAge: 24 * 60 * 60 * 1000,
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Login successful",
+//       role: assignedRole.role,
+//       roleId: assignedRole._id,
+//     });
+//   } catch (error) {
+//     console.error("loginEmployee error:", error);
+//     return res.status(500).json({ success: false, message: "Internal server error" });
+//   }
+// };
+
+
 export const loginEmployee = async (req, res) => {
   try {
     const { email, contact, licenseId } = req.body;
 
+    // Step 1: Check required fields
     if (!email || !contact || !licenseId) {
       return res.status(400).json({
         success: false,
@@ -760,21 +1034,39 @@ export const loginEmployee = async (req, res) => {
       });
     }
 
+    // Step 2: Verify role assignment
+    const verifyRole = await Role.findOne({ email, phone: contact });
+    if (!verifyRole) {
+      return res.status(404).json({
+        success: false,
+        message: "Role not assigned",
+      });
+    }
+
+    // Step 3: Check employee associated with this role and license
     const checkEmployee = await EmployeeModel.findOne({
-      "employeeEmail.email": email,
-      "employeeContact.contact": contact,
-    }).populate("licenseId", "licenseId expiresAt companyName _id");
+      roleID: verifyRole._id,
+      licenseId: verifyRole.licenseId,
+    });
 
     if (!checkEmployee) {
-      return res.status(404).json({ success: false, message: "Employee not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found for assigned role",
+      });
     }
 
-    if (checkEmployee?.licenseId?.licenseId !== licenseId) {
-      return res.status(403).json({ success: false, message: "License ID does not match" });
+    // Step 4: License verification
+    if (checkEmployee.licenseId.toString() !== verifyRole.licenseId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "License ID doe,s not match",
+      });
     }
 
+    // Step 5: Get company configuration and permissions
     const companyConfig = await companyConfigureModel.findOne({
-      licenseId: checkEmployee.licenseId._id,
+      licenseId: checkEmployee.licenseId,
     });
 
     const matchedPermission = companyConfig?.permissions.find(
@@ -785,15 +1077,17 @@ export const loginEmployee = async (req, res) => {
 
     const permissionArray = matchedPermission ? matchedPermission.permission : [];
 
-    if (!checkEmployee.licenseId?.expiresAt || new Date() > new Date(checkEmployee.licenseId.expiresAt)) {
-      return res.status(403).json({ success: false, message: "License has expired" });
-    }
+    // Step 6: Check license expiry
+    // if (!checkEmployee.licenseId?.expiresAt || new Date() > new Date(checkEmployee.licenseId.expiresAt)) {
+    //   return res.status(403).json({ success: false, message: "License has expired" });
+    // }
 
+    // Step 7: Check email/contact verification
     if (!checkEmployee.employeeEmail?.isVerified && !checkEmployee.employeeContact?.isVerified) {
       return res.status(403).json({ success: false, message: "Email or contact must be verified" });
     }
 
-    // JWT generation
+    // Step 8: JWT generation
     const companyKey = jwt.sign(
       {
         id: checkEmployee._id,
@@ -804,52 +1098,51 @@ export const loginEmployee = async (req, res) => {
         email: checkEmployee.employeeEmail.email,
         contact: checkEmployee.employeeContact.contact,
         status: checkEmployee.status,
-        licenseId: checkEmployee.licenseId._id,
+        licenseId: checkEmployee.licenseId,
+        roleID:checkEmployee?.roleID,
         permissionArray,
       },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
+    // Step 9: Store token in Redis
     const redisKey = `employee:${checkEmployee._id}:token`;
     const existingToken = await redis.get(redisKey);
 
     if (!existingToken) {
-      // First login → increment active users
-      await incrementActiveUser(checkEmployee.licenseId._id);
+      await incrementActiveUser(checkEmployee.licenseId);
     }
 
     await redis.set(redisKey, companyKey, "EX", 24 * 60 * 60);
 
-    // Set JWT cookie
-
-    // res.cookie("companyKey_keys", companyKey, {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: "lax",
-    //   maxAge: 24 * 60 * 60 * 1000
-    // });
+    // Step 10: Set JWT cookie
     res.cookie("companyKey_keys", companyKey, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",       // must be NONE for cross-subdomain requests
-      domain: ".ngoguru.info",
-      maxAge: 24 * 60 * 60 * 1000
+      secure: false,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
     });
-    // ===== Attendance =====
-    const { startUTC, endUTC } = getISTDayRangeUTC();
 
+      // Set JWT in cookie
+    // res.cookie("companyKey_keys", companyKey, {
+    //   httpOnly: true, // cannot be accessed by JS
+    //   secure: false, // set to true in production with HTTPS
+    //   sameSite: "lax",
+    //   maxAge: 48 * 60 * 60 * 1000, // 24 hours
+    // });
+    // Step 11: Attendance handling
+    const { startUTC, endUTC } = getISTDayRangeUTC();
     let attendance = await AttendanceModel.findOne({
       employeeId: checkEmployee._id,
-      licenseId: checkEmployee.licenseId._id,
+      licenseId: checkEmployee.licenseId,
       date: { $gte: startUTC, $lte: endUTC },
     });
 
     if (!attendance) {
-      // console.log("rgjrt")
       attendance = await AttendanceModel.create({
         employeeId: checkEmployee._id,
-        licenseId: checkEmployee.licenseId._id,
+        licenseId: checkEmployee.licenseId,
         date: startUTC,
         inTime: new Date(),
         workingMinutes: 0,

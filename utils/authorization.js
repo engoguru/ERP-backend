@@ -25,6 +25,7 @@ export const authorization = async (req, res, next) => {
     if (!redisToken || redisToken !== token) {
       return res.status(401).json({ success: false, message: "Invalid or expired token" });
     }
+    // console.log(decoded,"deco")
     req.user = decoded; // attach decoded user to request
     next();
   } catch (error) {

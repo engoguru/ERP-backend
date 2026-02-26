@@ -173,6 +173,89 @@ export const leadCreate = async (req, res, next) => {
 //     return next(error);
 //   }
 // };
+// export const leadView = async (req, res, next) => {
+//   try {
+//     const page = parseInt(req.query.page) || 1;
+//     const itemsPerPage = parseInt(req.query.itemsPerPage) || 10;
+//     const skip = (page - 1) * itemsPerPage;
+
+//     const { search, status, date, assigned } = req.query;
+//     const { id: employeeId, role, licenseId } = req.user;
+//     // console.log(assigned, "pp")
+//     let query = { licenseId };
+
+//     // ---------------- ROLE FILTER ----------------
+//     const unrestrictedRoles = ["Admin", "Digital Marketer"];
+
+//     if (!unrestrictedRoles.includes(role)) {
+//       query.whoAssignedwho = {
+//         $elemMatch: { assignedTo: employeeId }
+//       };
+//     }
+
+//     // ---------------- SEARCH (FIXED) ----------------
+//     if (search) {
+//       const searchRegex = new RegExp(search, "i");
+
+//       query.$or = [
+//         { "fields.Name": searchRegex },
+//         { "fields.Email": searchRegex },
+//         { "fields.Contact": searchRegex },
+//         { "fields.description": searchRegex },
+//         { "fields.status": searchRegex },
+//         { source: searchRegex }
+//       ];
+//     }
+
+//     // ---------------- STATUS FILTER ----------------
+//     if (status) {
+//       query["fields.status"] = status;
+//     }
+//     if (assigned === "assigned") {
+//       query.whoAssignedwho = { $exists: true, $ne: [] };
+//     }
+
+//     if (assigned === "unassigned") {
+//       query.$or = [
+//         { whoAssignedwho: { $exists: false } },
+//         { whoAssignedwho: { $size: 0 } }
+//       ];
+//     }
+
+//     // ---------------- DATE FILTER ----------------
+//     if (date) {
+//       const start = new Date(date);
+//       const end = new Date(date);
+//       end.setHours(23, 59, 59, 999);
+
+//       query.createdAt = {
+//         $gte: start,
+//         $lte: end
+//       };
+//     }
+
+//     const total = await leadModel.countDocuments(query);
+
+//     const leads = await leadModel
+//       .find(query)
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(itemsPerPage)
+//       .lean();
+
+//     return res.status(200).json({
+//       success: true,
+//       page,
+//       itemsPerPage,
+//       total,
+//       totalPages: Math.ceil(total / itemsPerPage),
+//       data: leads
+//     });
+
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 export const leadView = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -180,20 +263,24 @@ export const leadView = async (req, res, next) => {
     const skip = (page - 1) * itemsPerPage;
 
     const { search, status, date, assigned } = req.query;
-    const { id: employeeId, role, licenseId } = req.user;
-    // console.log(assigned, "pp")
+    const { id: employeeId, role, licenseId, roleID, permissionArray } = req.user;
+
     let query = { licenseId };
+// ---------------- PERMISSION-BASED FILTER ----------------
+if (permissionArray.includes("ldconverter")) {
+  query.roleID = roleID;
+  query["fields.status"] = { $nin: ["Confirmed", "Dump"] }; // exclude confirmed and dump
+} else if (permissionArray.includes("ldassign")) {
+  query.$or = [
+    { whoAssignedwho: { $exists: false } },
+    { whoAssignedwho: { $size: 0 } },
+    { "fields.status": "Dump" }
+  ];
+} else if (permissionArray.includes("ldprocessor")) {
+  query["fields.status"] = "Confirmed";
+}
 
-    // ---------------- ROLE FILTER ----------------
-    const unrestrictedRoles = ["Admin", "Digital Marketer"];
-
-    if (!unrestrictedRoles.includes(role)) {
-      query.whoAssignedwho = {
-        $elemMatch: { assignedTo: employeeId }
-      };
-    }
-
-    // ---------------- SEARCH (FIXED) ----------------
+    // ---------------- SEARCH FILTER ----------------
     if (search) {
       const searchRegex = new RegExp(search, "i");
 
@@ -211,11 +298,11 @@ export const leadView = async (req, res, next) => {
     if (status) {
       query["fields.status"] = status;
     }
+
+    // ---------------- ASSIGNED FILTER ----------------
     if (assigned === "assigned") {
       query.whoAssignedwho = { $exists: true, $ne: [] };
-    }
-
-    if (assigned === "unassigned") {
+    } else if (assigned === "unassigned") {
       query.$or = [
         { whoAssignedwho: { $exists: false } },
         { whoAssignedwho: { $size: 0 } }
@@ -257,7 +344,6 @@ export const leadView = async (req, res, next) => {
   }
 };
 
-
 export const leadViewOne = async (req, res, next) => {
   try {
     const { id: employeeId } = req.user;
@@ -273,18 +359,18 @@ export const leadViewOne = async (req, res, next) => {
     let lead = await leadModel.findById(id)
       .populate({
         path: "whoAssignedwho.assignedTo",
-        select: "name employeeCode"
+        select: "name role department"
       })
       .populate({
         path: "whoAssignedwho.assignedBy",
-        select: "name employeeCode"
+        select: "name role department"
       })
       .populate({
         path: "followUp.addedBy",
-        select: "name employeeCode"
+        select: "name role employeeCode"
       })
       .lean();
-
+// console.log(lead,"rtog")
     // FIRST check if lead exists
     if (!lead) {
       const error = new Error("Lead not found");
@@ -469,7 +555,7 @@ export const leadUpdate = async (req, res, next) => {
         message: "Lead ID is required"
       });
     }
-
+// console.log(req.body,"etjrtjgg")
     // -----------------------------
     // Parse fields if string
     // -----------------------------

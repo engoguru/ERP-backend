@@ -26,36 +26,36 @@ const OnConfirmedSchema = new mongoose.Schema({
 
 
 const leadSchema = new mongoose.Schema({
-    licenseId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "LicenseTable", // reference to your License model
-           required: true
-    },
+  licenseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "LicenseTable", // reference to your License model
+    required: true
+  },
   version: {
     type: Number,
     default: 1
   },
-   fields: {
+  fields: {
     type: Map,
     of: mongoose.Schema.Types.Mixed,
     default: {}
   },
-  source:{
- type:String,
-  required:true,
-  trim:true
+  source: {
+    type: String,
+    required: true,
+    trim: true
   },
   whoAssignedwho: [
     {
       assignedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Employee_Table",
-       
+
       },
       assignedTo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Employee_Table",
-      
+
       },
       assignedAt: {
         type: Date,
@@ -73,16 +73,24 @@ const leadSchema = new mongoose.Schema({
       addedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Employee_Table",
-   
+
       },
       // Use Mixed type so any shape can be stored (text, image links, numbers, objects)
       messageContent: {
         type: mongoose.Schema.Types.Mixed,
-      
+
       },
+      nextFollowUpDate: Date,
+      status: {
+        type: String,
+        enum: ["pending", "completed", "missed"],
+        default: "pending"
+      },
+      completedAt: Date
     },
   ],
-OnConfirmed:[OnConfirmedSchema]
+  OnConfirmed: [OnConfirmedSchema],
+  roleID: { type: mongoose.Schema.Types.ObjectId, ref: "Role", }
 
 }, { timestamps: true });
 

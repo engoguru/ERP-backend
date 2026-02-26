@@ -23,7 +23,7 @@ const companyConfigureValidate=(req, res, next)=>{
 }
 
 
-companyConfigureRoutes.post("/create" ,authorization, companyConfigureValidate,companyConfigureCreate)
+companyConfigureRoutes.post("/create" ,authorization,companyConfigureCreate)
 
 
 companyConfigureRoutes.get("/view" ,authorization,companyConfigureViewOne)
@@ -33,7 +33,7 @@ companyConfigureRoutes.get("/view" ,authorization,companyConfigureViewOne)
 companyConfigureRoutes.get("/viewaLL" ,companyConfigureViewAll)
 
 
-companyConfigureRoutes.put("/update" , authorization,companyConfigureValidate,companyConfigureUpdate)
+companyConfigureRoutes.put("/update" , authorization,companyConfigureUpdate)
 
 
 companyConfigureRoutes.get("/viewDetail/id" ,companyConfigureViewByLicense)

@@ -26,6 +26,8 @@ import { startPayrollCron } from "./jobs/payroll.job.js";
 import{startActiveUser} from "./jobs/active.user.js"
 import Issueroute from "./routes/employees/issue.routes.js";
 import chatRoute from "./routes/chatbot.routes.js";
+import Roleroute from "./routes/role.routes.js";
+import departmentRoute from "./routes/department.routes.js";
 
 dotenv.config();
 
@@ -89,6 +91,10 @@ app.use("/api/employee", employeeRoute);
 app.use("/api/issue",Issueroute)
 
 app.use("/api/ip",ipRoutes)
+
+
+app.use("/api/role",Roleroute)
+app.use("/api/department",departmentRoute)
 
 app.use("/api/chat",chatRoute)
 

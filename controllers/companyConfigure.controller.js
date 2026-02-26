@@ -56,37 +56,213 @@ export const companyConfigureCreate = async (req, res, next) => {
 };
 
 
+// export const companyConfigureUpdate = async (req, res, next) => {
+//   try {
+//     // console.log(req.body)
+//     const { role, employeeCode } = req.user;
+
+//     if (role !== "Admin") {
+//       const error = new Error("Not allowed");
+//       error.statusCode = 403;
+//       return next(error);
+//     }
+
+//     if (req.body.licenseId) {
+//       const error = new Error("Cannot update licenseId field");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+//     const licenseData = await EmployeeModel
+//       .findOne({ employeeCode })
+//       .populate("licenseId", "licenseId _id");
+
+//     if (!licenseData || !licenseData.licenseId) {
+//       const error = new Error("License not found");
+//       error.statusCode = 404;
+//       return next(error);
+//     }
+
+
+//     const filter = { licenseId: licenseData.licenseId._id };
+
+//     // Fetch existing config
+//     const existingConfig = await companyConfigureModel.findOne(filter);
+
+//     if (!existingConfig) {
+//       const error = new Error("Configuration not found");
+//       error.statusCode = 404;
+//       return next(error);
+//     }
+
+//     let incomingRoles = [];
+
+//     if (Array.isArray(req.body.roles)) {
+//       incomingRoles = req.body.roles.slice(1); // skip Admin
+//     }
+
+//     incomingRoles.forEach((incomingDept) => {
+//       const existingDept = existingConfig.roles.find(
+//         (r) => r.department === incomingDept.department
+//       );
+
+//       if (existingDept) {
+//         // Add only new roles
+//         incomingDept.roles.forEach((role) => {
+//           if (!existingDept.roles.includes(role)) {
+//             existingDept.roles.push(role);
+//           }
+//         });
+//       } else {
+//         // Department does not exist → add whole object
+//         existingConfig.roles.push({
+//           department: incomingDept.department,
+//           roles: incomingDept.roles,
+//           _id: incomingDept._id || new mongoose.Types.ObjectId()
+//         });
+//       }
+//     });
+
+
+//     // Merge permissions (push new ones)
+//     // const incomingPermissions = req.body.permissions || [];
+
+//     // incomingPermissions.forEach((incomingPerm) => {
+//     //   const existingPerm = existingConfig.permissions.find(
+//     //     (p) =>
+//     //       p.department === incomingPerm.department &&
+//     //       p.roleName === incomingPerm.roleName
+//     //   );
+
+//     //   if (existingPerm) {
+//     //     // Add only new permissions
+//     //     incomingPerm.permission.forEach((perm) => {
+//     //       // if (!existingPerm.permission.includes(perm)) {
+//     //         existingPerm.permission.push(perm);
+//     //       // }
+//     //     });
+//     //   } else {
+//     //     // New role permission
+//     //     existingConfig.permissions.push({
+//     //       department: incomingPerm.department,
+//     //       roleName: incomingPerm.roleName,
+//     //       permission: incomingPerm.permission,
+//     //       _id: incomingPerm._id || new mongoose.Types.ObjectId()
+//     //     });
+//     //   }
+//     // });
+
+//     // Incoming permissions from request
+//     const incomingPermissions = req.body.permissions || [];
+
+//     // Replace existing permissions with incoming ones
+//     incomingPermissions.forEach((incomingPerm) => {
+//       const existingIndex = existingConfig.permissions.findIndex(
+//         (p) =>
+//           p.department === incomingPerm.department &&
+//           p.roleName === incomingPerm.roleName
+//       );
+
+//       if (existingIndex !== -1) {
+//         // Overwrite the permissions array completely
+//         existingConfig.permissions[existingIndex].permission = incomingPerm.permission;
+//       } else {
+//         // Add new role permission
+//         existingConfig.permissions.push({
+//           department: incomingPerm.department,
+//           roleName: incomingPerm.roleName,
+//           permission: incomingPerm.permission,
+//           _id: incomingPerm._id || new mongoose.Types.ObjectId(),
+//         });
+//       }
+//     });
+
+
+//     if (req.body.leadForm) {
+//       existingConfig.leadForm = req.body.leadForm
+//     }
+//     // const incomingPermissions = req.body.permissions || [];
+
+//     // // Combine without duplicates (optional behavior)
+//     // const mergedPermissions = [
+//     //   ...existingConfig.permissions,
+//     //   ...incomingPermissions
+//     // ];
+
+//     // const updatedConfig = await companyConfigureModel.findOneAndUpdate(
+//     //   filter,
+//     //   {
+//     //     ...req.body,
+//     //     permissions: mergedPermissions
+//     //   },
+//     //   {
+//     //     new: true,
+//     //     runValidators: true
+//     //   }
+//     // );
+
+//     // if (!updatedConfig) {
+//     //   const error = new Error("Configuration not found");
+//     //   error.statusCode = 404;
+//     //   return next(error);
+//     // }
+
+//     // return res.status(200).json({
+//     //   success: true,
+//     //   data: updatedConfig
+//     // });
+//     await existingConfig.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       data: existingConfig
+//     });
+
+//   } catch (error) {
+//     if (error.code === 11000) {
+//       error.statusCode = 409;
+//       error.message = "Duplicate configuration field conflict";
+//     }
+//     return next(error);
+//   }
+// };
+
+
+
+
+
 export const companyConfigureUpdate = async (req, res, next) => {
+  console.log(req.body,"pp")
   try {
-    // console.log(req.body)
     const { role, employeeCode } = req.user;
 
+    // Only Admin can update
     if (role !== "Admin") {
       const error = new Error("Not allowed");
       error.statusCode = 403;
       return next(error);
     }
 
+    // Cannot update licenseId
     if (req.body.licenseId) {
       const error = new Error("Cannot update licenseId field");
       error.statusCode = 400;
       return next(error);
     }
 
-    const licenseData = await EmployeeModel
-      .findOne({ employeeCode })
-      .populate("licenseId", "licenseId _id");
+    // Get employee license
+    const employee = await EmployeeModel.findOne({ employeeCode }).populate(
+      "licenseId",
+      "_id"
+    );
 
-    if (!licenseData || !licenseData.licenseId) {
+    if (!employee?.licenseId) {
       const error = new Error("License not found");
       error.statusCode = 404;
       return next(error);
     }
 
-
-    const filter = { licenseId: licenseData.licenseId._id };
-
-    // Fetch existing config
+    const filter = { licenseId: employee.licenseId._id };
     const existingConfig = await companyConfigureModel.findOne(filter);
 
     if (!existingConfig) {
@@ -95,129 +271,84 @@ export const companyConfigureUpdate = async (req, res, next) => {
       return next(error);
     }
 
-    let incomingRoles = [];
+    // ================== UPDATE ROLES ==================
 
-    if (Array.isArray(req.body.roles)) {
-      incomingRoles = req.body.roles.slice(1); // skip Admin
-    }
+    // Exclude Admin from update
+    const incomingDepartments = Array.isArray(req.body.roles)
+      ? req.body.roles.filter((d) => d.department == "Admin")
+      : [];
 
-    incomingRoles.forEach((incomingDept) => {
+    incomingDepartments.forEach((dept) => {
       const existingDept = existingConfig.roles.find(
-        (r) => r.department === incomingDept.department
+        (d) => d.department === dept.department
       );
 
       if (existingDept) {
-        // Add only new roles
-        incomingDept.roles.forEach((role) => {
-          if (!existingDept.roles.includes(role)) {
-            existingDept.roles.push(role);
+        // Department exists → merge roles
+        dept.roles.forEach((incomingRole) => {
+          const existingRole = existingDept.roles.find(
+            (r) => r.role === incomingRole.role
+          );
+
+          if (existingRole) {
+            // Update email and phone
+            existingRole.email = incomingRole.email || "";
+            existingRole.phone = incomingRole.phone || "";
+          } else {
+            // Add new role
+            existingDept.roles.push({
+              role: incomingRole.role,
+              email: incomingRole.email || "",
+              phone: incomingRole.phone || "",
+              _id: new mongoose.Types.ObjectId(),
+            });
           }
         });
       } else {
-        // Department does not exist → add whole object
+        // Add new department
         existingConfig.roles.push({
-          department: incomingDept.department,
-          roles: incomingDept.roles,
-          _id: incomingDept._id || new mongoose.Types.ObjectId()
+          department: dept.department,
+          roles: dept.roles.map((r) => ({
+            role: r.role,
+            email: r.email || "",
+            phone: r.phone || "",
+            _id: new mongoose.Types.ObjectId(),
+          })),
+          _id: new mongoose.Types.ObjectId(),
         });
       }
     });
 
-
-    // Merge permissions (push new ones)
-    // const incomingPermissions = req.body.permissions || [];
-
-    // incomingPermissions.forEach((incomingPerm) => {
-    //   const existingPerm = existingConfig.permissions.find(
-    //     (p) =>
-    //       p.department === incomingPerm.department &&
-    //       p.roleName === incomingPerm.roleName
-    //   );
-
-    //   if (existingPerm) {
-    //     // Add only new permissions
-    //     incomingPerm.permission.forEach((perm) => {
-    //       // if (!existingPerm.permission.includes(perm)) {
-    //         existingPerm.permission.push(perm);
-    //       // }
-    //     });
-    //   } else {
-    //     // New role permission
-    //     existingConfig.permissions.push({
-    //       department: incomingPerm.department,
-    //       roleName: incomingPerm.roleName,
-    //       permission: incomingPerm.permission,
-    //       _id: incomingPerm._id || new mongoose.Types.ObjectId()
-    //     });
-    //   }
-    // });
-
-    // Incoming permissions from request
+    // ================== UPDATE PERMISSIONS ==================
     const incomingPermissions = req.body.permissions || [];
-
-    // Replace existing permissions with incoming ones
-    incomingPermissions.forEach((incomingPerm) => {
-      const existingIndex = existingConfig.permissions.findIndex(
-        (p) =>
-          p.department === incomingPerm.department &&
-          p.roleName === incomingPerm.roleName
+    incomingPermissions.forEach((perm) => {
+      const idx = existingConfig.permissions.findIndex(
+        (p) => p.department === perm.department && p.roleName === perm.roleName
       );
-
-      if (existingIndex !== -1) {
-        // Overwrite the permissions array completely
-        existingConfig.permissions[existingIndex].permission = incomingPerm.permission;
+      if (idx !== -1) {
+        existingConfig.permissions[idx].permission = perm.permission;
       } else {
-        // Add new role permission
         existingConfig.permissions.push({
-          department: incomingPerm.department,
-          roleName: incomingPerm.roleName,
-          permission: incomingPerm.permission,
-          _id: incomingPerm._id || new mongoose.Types.ObjectId(),
+          department: perm.department,
+          roleName: perm.roleName,
+          permission: perm.permission,
+          _id: new mongoose.Types.ObjectId(),
         });
       }
     });
 
-
+    // ================== UPDATE LEAD FORM ==================
     if (req.body.leadForm) {
-      existingConfig.leadForm = req.body.leadForm
+      existingConfig.leadForm = req.body.leadForm;
     }
-    // const incomingPermissions = req.body.permissions || [];
 
-    // // Combine without duplicates (optional behavior)
-    // const mergedPermissions = [
-    //   ...existingConfig.permissions,
-    //   ...incomingPermissions
-    // ];
-
-    // const updatedConfig = await companyConfigureModel.findOneAndUpdate(
-    //   filter,
-    //   {
-    //     ...req.body,
-    //     permissions: mergedPermissions
-    //   },
-    //   {
-    //     new: true,
-    //     runValidators: true
-    //   }
-    // );
-
-    // if (!updatedConfig) {
-    //   const error = new Error("Configuration not found");
-    //   error.statusCode = 404;
-    //   return next(error);
-    // }
-
-    // return res.status(200).json({
-    //   success: true,
-    //   data: updatedConfig
-    // });
+    // Save updated config
     await existingConfig.save();
 
     return res.status(200).json({
       success: true,
-      data: existingConfig
+      data: existingConfig,
     });
-
   } catch (error) {
     if (error.code === 11000) {
       error.statusCode = 409;
@@ -226,8 +357,6 @@ export const companyConfigureUpdate = async (req, res, next) => {
     return next(error);
   }
 };
-
-
 
 export const companyConfigureViewOne = async (req, res, next) => {
   try {
