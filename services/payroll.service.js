@@ -26,7 +26,7 @@ export const calculatePayroll = async ({ employeeId, licenseId, month, year }) =
 
   // Weekly Off
   const weekOffDays = companyConfig.weeklyOff?.days || [];
-  const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const DAY_NAMES = ["Sunday","Monday ","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   let fixedOffDays = 0;
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month - 1, day);
@@ -68,7 +68,7 @@ export const calculatePayroll = async ({ employeeId, licenseId, month, year }) =
   const extraDaysWorked = Math.max(0, attendanceCount - companyWorkingDays);
 
   // Per day salary
-  const perDaySalary = salary.netSalary / companyWorkingDays;
+  const perDaySalary = (salary.netSalary/12) / companyWorkingDays;
 
   // Deduction based on leaves
   const unpaidDeduction =
@@ -92,8 +92,8 @@ export const calculatePayroll = async ({ employeeId, licenseId, month, year }) =
       pf: salary.pf,
       esi: salary.esi,
       professionalTax: salary.professionalTax,
-      gratuity: salary.gratuity,
-      totalDeduction: salary.totalDeduction
+      gratuity: salary.gratuity, 
+      totalDeduction: salary.totalDeduction 
     },
     currentMonthSalary: salary.netSalary, // full salary reference
     netSalary,                             // calculated salary

@@ -259,7 +259,7 @@ export const leadCreate = async (req, res, next) => {
 export const leadView = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const itemsPerPage = parseInt(req.query.itemsPerPage) || 10;
+    const itemsPerPage = parseInt(req.query.itemsPerPage) || 100;
     const skip = (page - 1) * itemsPerPage;
 
     const { search, status, date, assigned } = req.query;
@@ -425,7 +425,6 @@ export const leadViewOne = async (req, res, next) => {
     return next(error);
   }
 };
-
 
 
 export const leadDelete = async (req, res, next) => {
@@ -738,8 +737,9 @@ import LicenseModel from "../models/license.model.js";
 
 
 export const metaLeadStore = async (req, res) => {
+  console.log("jhgfg")
   try {
-    const leadId = req.body.entry[0].changes[0].value.leadgen_id; // FIXED typo
+    const leadId = req.body.entry[0].changes[0].value.leadgen_id; 
     if (!leadId) return res.sendStatus(200);
 
     // Get licenseId dynamically (query param or map by page/form)
@@ -781,12 +781,10 @@ export const metaLeadStore = async (req, res) => {
 
 
 
-
-
 export const bulkLeadAssign = async (req, res) => {
   try {
     const { id } = req.user; // logged-in user
-    const { leadIds, assignedTo } = req.body;
+    const { leadIds, assignedTo, roleID } = req.body;
 
     // Validation
     if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
@@ -795,6 +793,7 @@ export const bulkLeadAssign = async (req, res) => {
         message: "No leads selected",
       });
     }
+    //  console.log(leadIds,assignedTo,roleID,"pp")
 
     if (!assignedTo) {
       return res.status(400).json({
@@ -814,6 +813,7 @@ export const bulkLeadAssign = async (req, res) => {
         assignedAt: new Date(),
       },
     },
+    roleID:roleID
   }
 );
 
@@ -821,7 +821,7 @@ export const bulkLeadAssign = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Leads assigned successfully",
-      modifiedCount: result.modifiedCount,
+      modifiedCount: result,
     });
   } catch (error) {
     console.error("Bulk Assign Error:", error);

@@ -1074,7 +1074,7 @@ export const loginEmployee = async (req, res) => {
         perm.roleName?.trim().toLowerCase() === checkEmployee.role?.trim().toLowerCase() &&
         perm.department?.trim().toLowerCase() === checkEmployee.department?.trim().toLowerCase()
     );
-
+// console.log(matchedPermission,"/",companyConfig ,"/",checkEmployee)
     const permissionArray = matchedPermission ? matchedPermission.permission : [];
 
     // Step 6: Check license expiry

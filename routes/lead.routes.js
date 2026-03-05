@@ -1,6 +1,6 @@
 import express from "express";
 import { leadSchemaJoi } from "../middlewares/lead.joiValidater.js";
-import { bulkLeadAssign, leadCreate, leadCreateInside, leadDashboard, leadDelete, leadUpdate, leadView, leadViewOne } from "../controllers/lead.controller.js";
+import { bulkLeadAssign, leadCreate, leadCreateInside, leadDashboard, leadDelete, leadUpdate, leadView, leadViewOne, metaLeadStore, verifyMeta } from "../controllers/lead.controller.js";
 import { authorization } from "../utils/authorization.js";
 
 
@@ -143,7 +143,8 @@ leadRoute.get("/dashboardData", authorization, leadDashboard)
 leadRoute.post("/assign",authorization,bulkLeadAssign)
 
 
-
+leadRoute.post("/webhook/meta",verifyMeta)
+leadRoute.get("/webhook/meta",metaLeadStore)
 
 
 
