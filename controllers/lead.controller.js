@@ -719,26 +719,51 @@ export const leadDashboard = async (req, res) => {
   }
 };
 
-export const verifyMeta = async (req, res) => {
+// export const verifyMeta = async (req, res) => {
+//   try {
+//     const mode = req.query["hub.mode"];
+//     const token = req.query["hub.verify_token"];
+//     const challenge = req.query["hub.challenge"];
+
+//     console.log("mode:", mode, "token:", token, "challenge:", challenge);
+//     console.log("ENV Token:", process.env.Meta_Token);
+
+//     if (mode === "subscribe" && token === process.env.Meta_Token) {
+//       return res.status(200).send(challenge);
+//     } else {
+//       return res.status(403).send("Forbidden: token or mode mismatch");
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     return res.sendStatus(500);
+//   }
+// };
+
+export const verifyMeta = (req, res) => {
   try {
+    // Extract query params
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
-    console.log("mode:", mode, "token:", token, "challenge:", challenge);
+    // Log incoming request for debugging
+    console.log("Incoming GET verification request:");
+    console.log({ mode, token, challenge });
     console.log("ENV Token:", process.env.Meta_Token);
 
+    // Check verification
     if (mode === "subscribe" && token === process.env.Meta_Token) {
-      return res.status(200).send(challenge);
-    } else {
-      return res.status(403).send("Forbidden: token or mode mismatch");
+      console.log("✅ Verification passed");
+      return res.status(200).send(challenge); // Must return challenge exactly
     }
+
+    console.log("❌ Verification failed");
+    return res.status(403).send("Forbidden: token or mode mismatch");
   } catch (error) {
-    console.error(error);
-    return res.sendStatus(500);
+    console.error("Error in verification handler:", error);
+    return res.sendStatus(500); // Always send a response
   }
 };
-
 import axios from "axios";
 import LicenseModel from "../models/license.model.js";
 
