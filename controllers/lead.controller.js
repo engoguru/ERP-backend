@@ -1,9 +1,12 @@
+
+import dotenv from "dotenv";
+dotenv.config();
+
 import { generateUploadURL } from "../config/awsS3.js";
 import companyConfigureModel from "../models/companyConfigure.model.js";
 import EmployeeModel from "../models/employees/employee.model.js";
 import leadModel from "../models/lead.model.js";
 import mongoose from "mongoose";
-
 
 
 
@@ -716,21 +719,25 @@ export const leadDashboard = async (req, res) => {
   }
 };
 
-
 export const verifyMeta = async (req, res) => {
   try {
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
-    if (mode === "Subscribe" && token === process.env.Meta_Token) {
-      return res.status(200).send(challenge)
-    }
 
-    return res.sendStatus(403)
+    console.log("mode:", mode, "token:", token, "challenge:", challenge);
+    console.log("ENV Token:", process.env.Meta_Token);
+
+    if (mode === "subscribe" && token === process.env.Meta_Token) {
+      return res.status(200).send(challenge);
+    } else {
+      return res.status(403).send("Forbidden: token or mode mismatch");
+    }
   } catch (error) {
-    console.log(error)
+    console.error(error);
+    return res.sendStatus(500);
   }
-}
+};
 
 import axios from "axios";
 import LicenseModel from "../models/license.model.js";
