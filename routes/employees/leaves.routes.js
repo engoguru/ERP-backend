@@ -24,7 +24,7 @@ export const validate = () => (req, res, next) => {
 /* ================= Leaves Routes ================= */
 leavesRoute.post("/create",authorization, validate(),leavesCreate);
 // leavesRoute.post("/create",(req,res)=>{
-//   console.log("jgejg")
+//   console.log("jgejg"
 // })
 
 leavesRoute.put("/update/:id",authorization, leavesUpdate);
