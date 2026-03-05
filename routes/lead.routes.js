@@ -143,8 +143,8 @@ leadRoute.get("/dashboardData", authorization, leadDashboard)
 leadRoute.post("/assign",authorization,bulkLeadAssign)
 
 
-leadRoute.post("/webhook/meta",verifyMeta)
-leadRoute.get("/webhook/meta",metaLeadStore)
+leadRoute.get("/webhook/meta",verifyMeta)
+leadRoute.post("/webhook/meta",metaLeadStore)
 
 
 
