@@ -10,6 +10,32 @@ import mongoose from "mongoose";
 
 
 
+// export const leadCreateInside = async (req, res, next) => {
+//   try {
+//     if (!req.body || Object.keys(req.body).length === 0) {
+//       const error = new Error("Request body cannot be empty");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+// // here i ant to check not duplicate number enter and check last 10 only nit include +91 
+
+//     // Simply save fields key=>value directly
+//     const newLead = await leadModel.create({
+//       licenseId: req.user.licenseId,
+//       fields: req.body,
+//       source: "Portal"
+//     });
+
+//     return res.status(201).json({
+//       success: true,
+//       data: newLead
+//     });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
+
 export const leadCreateInside = async (req, res, next) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -17,25 +43,30 @@ export const leadCreateInside = async (req, res, next) => {
       error.statusCode = 400;
       return next(error);
     }
-    // console.log(req.user,"rf")
-    // const { employeeCode } = req.user;
 
-    // const licenseData = await EmployeeModel
-    //   .findOne({ employeeCode })
-    //   .populate("licenseId", "_id")
-    //   .lean();
-    // console.log(req.body)
-    // if (!req.body.licenseId) {
-    //   const error = new Error("License not found");
-    //   return next(error);
-    // }
+    // Extract phone number from request body
+    const phone = req.body.Contact; // adjust key if your number is under a different field
+    if (!phone) {
+      const error = new Error("Phone number is required");
+      error.statusCode = 400;
+      return next(error);
+    }
 
-    // const id = licenseData._id;
-    //     const checkLicense=await LicenseModel.findOne({
-    // licenseId:id})
-    // console.log(checkLicense,"popo")
+    // Take last 10 digits only
+    const last10 = phone.replace(/\D/g, "").slice(-10); // removes non-digit chars
 
-    // Simply save fields key=>value directly
+    // Check for duplicate in the DB
+    const existingLead = await leadModel.findOne({
+      "fields.Contact": { $regex: `${last10}$` } // match last 10 digits
+    });
+
+    if (existingLead) {
+      const error = new Error("Phone number already exists");
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    // Save new lead
     const newLead = await leadModel.create({
       licenseId: req.user.licenseId,
       fields: req.body,
@@ -50,6 +81,7 @@ export const leadCreateInside = async (req, res, next) => {
     return next(error);
   }
 };
+
 
 export const leadCreate = async (req, res, next) => {
   try {
@@ -572,7 +604,7 @@ export const leadUpdate = async (req, res, next) => {
       }
     }
 
-    let { OnConfirmed, ...otherFields } = req.body;
+    let { OnConfirmed,statusRecord, ...otherFields } = req.body;
 
     // -----------------------------
     // Parse OnConfirmed if string
@@ -611,7 +643,12 @@ export const leadUpdate = async (req, res, next) => {
     if (Object.keys(otherFields).length > 0) {
       updateQuery.$set = otherFields;
     }
+  if (statusRecord && Array.isArray(statusRecord) && statusRecord.length > 0) {
+      // Initialize $push if not already (could exist from OnConfirmed)
+      if (!updateQuery.$push) updateQuery.$push = {};
 
+      updateQuery.$push.statusRecord = { $each: statusRecord };
+    }
     // -----------------------------
     // Check if OnConfirmed has at least one valid field
     // -----------------------------
@@ -677,37 +714,115 @@ export const leadUpdate = async (req, res, next) => {
 };
 
 
+// export const leadDashboard = async (req, res) => {
+//   try {
+//     const { licenseId } = req.user;
+
+//     // Start of current month
+//     const startOfMonth = new Date(
+//       new Date().getFullYear(),
+//       new Date().getMonth(),
+//       1
+//     );
+
+//     const [
+//       totalleads,
+//       monthlyleads
+//     ] = await Promise.all([
+//       leadModel.countDocuments({ licenseId }),
+
+//       leadModel.find({
+//         licenseId,
+//         createdAt: { $gte: startOfMonth },
+//       }),
+
+//       // LicenseModel.findById(licenseId).select("activeUser maxUser"),
+//     ]);
+
+//     return res.status(200).json({
+//       success: true,
+//       data: {
+//         totalleads,
+//         monthlyleads,
+//         // license: licenseData,
+//       },
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//     });
+//   }
+// };
+
 export const leadDashboard = async (req, res) => {
   try {
     const { licenseId } = req.user;
 
-    // Start of current month
     const startOfMonth = new Date(
       new Date().getFullYear(),
       new Date().getMonth(),
       1
     );
 
-    const [
-      totalleads,
-      monthlyleads
-    ] = await Promise.all([
+    const [totalleads, monthlyleads, roleWise] = await Promise.all([
+      // Total Leads
       leadModel.countDocuments({ licenseId }),
 
-      leadModel.find({
+      // Monthly Leads
+      leadModel.countDocuments({
         licenseId,
         createdAt: { $gte: startOfMonth },
       }),
 
-      // LicenseModel.findById(licenseId).select("activeUser maxUser"),
+      // Role Wise Leads
+      leadModel.aggregate([
+        {
+          $match: {
+            licenseId: new mongoose.Types.ObjectId(licenseId),
+          },
+        },
+        {
+          $lookup: {
+            from: "roles", // Role collection
+            localField: "roleID",
+            foreignField: "_id",
+            as: "roleData",
+          },
+        },
+        {
+          $unwind: {
+            path: "$roleData",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $group: {
+            _id: "$roleData.role",
+            leads: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            role: "$_id",
+            leads: 1,
+          },
+        },
+        {
+          $sort: { leads: -1 },
+        },
+      ]),
     ]);
-
+        
+// console.log(roleWise,totalleads,monthlyleads)
     return res.status(200).json({
       success: true,
       data: {
         totalleads,
         monthlyleads,
-        // license: licenseData,
+        roleWise,
       },
     });
   } catch (error) {
@@ -718,7 +833,6 @@ export const leadDashboard = async (req, res) => {
     });
   }
 };
-
 // export const verifyMeta = async (req, res) => {
 //   try {
 //     const mode = req.query["hub.mode"];
@@ -768,14 +882,116 @@ import axios from "axios";
 import LicenseModel from "../models/license.model.js";
 
 
+// export const metaLeadStore = async (req, res) => {
+//   console.log("jhgfg")
+//   try {
+//     const leadId = req.body.entry[0].changes[0].value.leadgen_id; 
+//     if (!leadId) return res.sendStatus(200);
+
+//     // Get licenseId dynamically (query param or map by page/form)
+//     const licenseId = req.query.licenseId;
+//     if (!licenseId) return res.status(400).send("licenseId required");
+
+//     // Fetch lead data from Meta
+//     const leadResponse = await axios.get(
+//       `https://graph.facebook.com/v18.0/${leadId}`,
+//       {
+//         params: {
+//           access_token: process.env.Pages_Access_Token,
+//         },
+//       }
+//     );
+
+//     // Map field data
+//     const fields = {};
+//     leadResponse.data.field_data.forEach((f) => {
+//       fields[f.name] = f.values[0];
+//     });
+
+//     // Save lead
+//     await leadModel.create({
+//       licenseId,
+//       leadgenId: leadId,
+//       fields,
+//       whoAssignedwho: [], // empty initially
+//       followUp: [],       // empty initially
+//     });
+
+//     console.log("Lead saved:", leadId, "for license:", licenseId);
+//     res.sendStatus(200);
+//   } catch (error) {
+//     console.error("Error saving lead:", error.message);
+//     res.sendStatus(500);
+//   }
+// };
+
+
+
+// export const metaLeadStore = async (req, res) => {
+//   console.log("Received lead webhook");
+
+//   try {
+//     const leadId = req.body.entry[0].changes[0].value.leadgen_id;
+//     if (!leadId) return res.sendStatus(200);
+
+//     // const licenseId =NGOG101474
+//     const licenseId ="NGOG101474"
+//     if (!licenseId) return res.status(400).send("licenseId required");
+
+//     // Fetch lead data from Meta
+//     const leadResponse = await axios.get(
+//       `https://graph.facebook.com/v18.0/${leadId}`,
+//       {
+//         params: { access_token: process.env.Pages_Access_Token },
+//       }
+//     );
+
+//     // Map Meta field names to your DB model
+//     const fieldMapping = {
+//       email: "email",
+//       phone_number: "contact",
+//       city: "city",
+//       state: "state",
+//       name_of_your_ngo: "ngoName",
+//     };
+
+//     const fields = {};
+//     leadResponse.data.field_data.forEach((f) => {
+//       const dbField = fieldMapping[f.name];
+//       if (dbField) {
+//         fields[dbField] = f.values[0];
+//       }
+//     });
+
+//     // Save lead
+//     await leadModel.create({
+//       licenseId,
+//       leadgenId: leadId,
+//       description: "",      // leave description empty
+//       ...fields,            // mapped fields
+//       whoAssignedwho: [],   // empty initially
+//       followUp: [],         // empty initially
+//     });
+
+//     console.log("Lead saved:", leadId, "for license:", licenseId);
+//     res.sendStatus(200);
+//   } catch (error) {
+//     console.error("Error saving lead:", error.message);
+//     res.sendStatus(500);
+//   }
+// };
+
+
+
+
 export const metaLeadStore = async (req, res) => {
-  console.log("jhgfg")
+  console.log("Received lead webhook");
+
   try {
-    const leadId = req.body.entry[0].changes[0].value.leadgen_id; 
+    const leadId = req.body?.entry?.[0]?.changes?.[0]?.value?.leadgen_id;
     if (!leadId) return res.sendStatus(200);
 
-    // Get licenseId dynamically (query param or map by page/form)
-    const licenseId = req.query.licenseId;
+    const licenseId = "NGOG101474"; // should be ObjectId ideally
     if (!licenseId) return res.status(400).send("licenseId required");
 
     // Fetch lead data from Meta
@@ -788,30 +1004,40 @@ export const metaLeadStore = async (req, res) => {
       }
     );
 
-    // Map field data
+    const fieldMapping = {
+      email: "email",
+      phone_number: "contact",
+      city: "city",
+      state: "state",
+      name_of_your_ngo: "ngoName",
+    };
+
     const fields = {};
+
     leadResponse.data.field_data.forEach((f) => {
-      fields[f.name] = f.values[0];
+      const dbField = fieldMapping[f.name];
+      if (dbField) {
+        fields[dbField] = f.values[0];
+      }
     });
 
-    // Save lead
     await leadModel.create({
       licenseId,
-      leadgenId: leadId,
-      fields,
-      whoAssignedwho: [], // empty initially
-      followUp: [],       // empty initially
+      source: "meta_ads", // required field 
+      fields,             // store inside Map
+      whoAssignedwho: [],
+      followUp: [],
     });
 
-    console.log("Lead saved:", leadId, "for license:", licenseId);
+    console.log("Lead saved:", leadId);
+
     res.sendStatus(200);
+
   } catch (error) {
-    console.error("Error saving lead:", error.message);
+    console.error("Error saving lead:", error.response?.data || error.message);
     res.sendStatus(500);
   }
 };
-
-
 
 export const bulkLeadAssign = async (req, res) => {
   try {

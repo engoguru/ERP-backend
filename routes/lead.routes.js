@@ -109,7 +109,7 @@ const uploadFields = multerUploader.fields([
 ]);
 
 
-leadRoute.post("/create", leadCreate);
+leadRoute.post("  ", leadCreate);
 leadRoute.post("/createInside", authorization, leadCreateInside);
 
 leadRoute.get("/view", authorization, leadView);

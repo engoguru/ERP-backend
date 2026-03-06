@@ -90,6 +90,14 @@ const leadSchema = new mongoose.Schema({
     },
   ],
   OnConfirmed: [OnConfirmedSchema],
+statusRecord: [
+  {
+    roleId: { type: mongoose.Schema.Types.ObjectId, ref: "Role", required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee_Table", required: true },
+    status: { type: String, required: true },
+    changedAt: { type: Date, default: Date.now }
+  }
+],
   roleID: { type: mongoose.Schema.Types.ObjectId, ref: "Role", }
 
 }, { timestamps: true });
