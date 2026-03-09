@@ -301,6 +301,8 @@ export const leadView = async (req, res, next) => {
     const { id: employeeId, role, licenseId, roleID, permissionArray } = req.user;
 
     let query = { licenseId };
+        // ---------------- STATUS FILTER ----------------
+
     // ---------------- PERMISSION-BASED FILTER ----------------
     if (permissionArray.includes("ldconverter")) {
       query.roleID = roleID;
@@ -331,7 +333,14 @@ export const leadView = async (req, res, next) => {
 
     // ---------------- STATUS FILTER ----------------
     if (status) {
-      query["fields.status"] = status;
+      if (status === "other") {
+        // if "other", return leads with empty or null status
+        query["fields.status"] = { $in: ["", null] };
+        query[""] = { $in: ["", null] };
+        
+      } else {
+        query["fields.status"] = status;
+      }
     }
 
     // ---------------- ASSIGNED FILTER ----------------
@@ -462,77 +471,78 @@ export const leadViewOne = async (req, res, next) => {
 };
 
 
-export const leadStatusRecord = async (req, res, next) => {
-  try {
-    const { id } = req.params;
+// export const leadStatusRecord = async (req, res, next) => {
+//   try {
+//     const { id } = req.params;
 
-    const allStatuses = ["Confirmed", "Interested", "Dump", "Not Connected"];
+//     const allStatuses = ["Confirmed", "Interested", "Dump", "Not Connected"];
 
-    const data = await leadModel.aggregate([
-      // Match leads where this user exists in statusRecord
-      { $match: { "statusRecord.userId": new mongoose.Types.ObjectId(id) } },
+//     const data = await leadModel.aggregate([
+//       // Match leads where this user exists in statusRecord
+//       { $match: { "statusRecord.userId": new mongoose.Types.ObjectId(id) } },
 
-      // Unwind statusRecord to process counts
-      { $unwind: { path: "$statusRecord", preserveNullAndEmptyArrays: true } },
+//       // Unwind statusRecord to process counts
+//       { $unwind: { path: "$statusRecord", preserveNullAndEmptyArrays: true } },
 
-      // Lookup user info
-      // Lookup user info but only include name
-      {
-        $lookup: {
-          from: "employee_tables", // your employee collection
-          let: { userId: "$statusRecord.userId" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-            { $project: { name: 1, _id: 1 } } // only include name and _id
-          ],
-          as: "statusRecord.userId"
-        }
-      },
-      { $unwind: { path: "$statusRecord.userId", preserveNullAndEmptyArrays: true } },
+//       // Lookup user info
+//       // Lookup user info but only include name
+//       {
+//         $lookup: {
+//           from: "employee_tables", // your employee collection
+//           let: { userId: "$statusRecord.userId" },
+//           pipeline: [
+//             { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+//             { $project: { name: 1, _id: 1 } } // only include name and _id
+//           ],
+//           as: "statusRecord.userId"
+//         }
+//       },
+//       { $unwind: { path: "$statusRecord.userId", preserveNullAndEmptyArrays: true } },
 
-      // Lookup role info
-// Lookup role info but only include role field
-{
-  $lookup: {
-    from: "roles", // your role collection
-    let: { roleId: "$statusRecord.roleId" },
-    pipeline: [
-      { $match: { $expr: { $eq: ["$_id", "$$roleId"] } } },
-      { $project: { role: 1, _id: 1 } } // only include role and _id
-    ],
-    as: "statusRecord.roleId"
-  }
-},
-{ $unwind: { path: "$statusRecord.roleId", preserveNullAndEmptyArrays: true } },
+//       // Lookup role info
+//       // Lookup role info but only include role field
+//       {
+//         $lookup: {
+//           from: "roles", // your role collection
+//           let: { roleId: "$statusRecord.roleId" },
+//           pipeline: [
+//             { $match: { $expr: { $eq: ["$_id", "$$roleId"] } } },
+//             { $project: { role: 1, _id: 1 } } // only include role and _id
+//           ],
+//           as: "statusRecord.roleId"
+//         }
+//       },
+//       { $unwind: { path: "$statusRecord.roleId", preserveNullAndEmptyArrays: true } },
 
-      // Group back by lead
-      {
-        $group: {
-          _id: "$_id",
-          fields: { $first: "$fields" },
-          statusRecord: { $push: "$statusRecord" }
-        }
-      },
+//       // Group back by lead
+//       {
+//         $group: {
+//           _id: "$_id",
+//           fields: { $first: "$fields" },
+//           statusRecord: { $push: "$statusRecord" }
+//         }
+//       },
 
-      // Compute statusCounts
-      {
-        $addFields: {
-          statusCounts: allStatuses.reduce((acc, status) => {
-            acc[status] = { $size: { $filter: { input: "$statusRecord", as: "sr", cond: { $eq: ["$$sr.status", status] } } } };
-            return acc;
-          }, {})
-        }
-      }
-    ]);
+//       // Compute statusCounts
+//       {
+//         $addFields: {
+//           statusCounts: allStatuses.reduce((acc, status) => {
+//             acc[status] = { $size: { $filter: { input: "$statusRecord", as: "sr", cond: { $eq: ["$$sr.status", status] } } } };
+//             return acc;
+//           }, {})
+//         }
+//       }
+//     ]);
 
-    res.status(200).json({
-      success: true,
-      data
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+//   // console.log(data)
+//     res.status(200).json({
+//       success: true,
+//       data
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 export const leadDelete = async (req, res, next) => {
   try {
@@ -560,6 +570,104 @@ export const leadDelete = async (req, res, next) => {
   }
 };
 
+// controllers/lead.controller.js
+
+
+export const leadUpdate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Lead ID is required" });
+    }
+
+    // Destructure request body
+    let { fields, OnConfirmed, statusRecord, ...otherFields } = req.body;
+
+    // -----------------------------
+    // Parse fields if string (from FormData)
+    // -----------------------------
+    if (fields && typeof fields === "string") {
+      try { fields = JSON.parse(fields); } 
+      catch { return res.status(400).json({ success: false, message: "Invalid JSON for fields" }); }
+    }
+
+    // Parse OnConfirmed if string
+    if (OnConfirmed && typeof OnConfirmed === "string") {
+      try { OnConfirmed = JSON.parse(OnConfirmed); } 
+      catch { return res.status(400).json({ success: false, message: "Invalid JSON for OnConfirmed" }); }
+    }
+
+    // Parse OnConfirmed.contact if string
+    if (OnConfirmed?.contact && typeof OnConfirmed.contact === "string") {
+      try { OnConfirmed.contact = JSON.parse(OnConfirmed.contact); } 
+      catch { return res.status(400).json({ success: false, message: "Invalid JSON for OnConfirmed.contact" }); }
+    }
+
+    // Parse statusRecord if string
+    if (statusRecord && typeof statusRecord === "string") {
+      try { statusRecord = JSON.parse(statusRecord); } 
+      catch {
+        console.error("Invalid statusRecord JSON");
+        statusRecord = [];
+      }
+    }
+
+    // -----------------------------
+    // Build update query
+    // -----------------------------
+    const updateQuery = {};
+
+    // Update other normal fields
+    if (Object.keys(otherFields).length > 0) {
+      updateQuery.$set = otherFields;
+    }
+
+    if (fields && Object.keys(fields).length > 0) {
+      if (!updateQuery.$set) updateQuery.$set = {};
+      updateQuery.$set.fields = fields;
+    }
+
+    // -----------------------------
+    // Build $push for arrays
+    // -----------------------------
+    updateQuery.$push = {
+      ...updateQuery.$push,
+      ...(statusRecord && Array.isArray(statusRecord) && statusRecord.length > 0
+        ? { statusRecord: { $each: statusRecord } }
+        : {}),
+      ...(OnConfirmed && Object.keys(OnConfirmed).length > 0
+        ? { OnConfirmed: { $each: [OnConfirmed] } }
+        : {}),
+    };
+
+    if (Object.keys(updateQuery).length === 0) {
+      return res.status(400).json({ success: false, message: "No valid fields provided for update" });
+    }
+
+    // -----------------------------
+    // Execute update
+    // -----------------------------
+    const updatedLead = await leadModel.findByIdAndUpdate(id, updateQuery, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedLead) {
+      return res.status(404).json({ success: false, message: "Lead not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead updated successfully",
+      data: updatedLead,
+    });
+
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
 // export const leadUpdate = async (req, res, next) => {
 //   // console.log(req.body, "Received request body");
 
@@ -651,139 +759,150 @@ export const leadDelete = async (req, res, next) => {
 //     }
 // }
 
-export const leadUpdate = async (req, res, next) => {
-  try {
-    const { id } = req.params;
+// export const leadUpdate = async (req, res, next) => {
+//   try {
+//     const { id } = req.params;
 
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Lead ID is required"
-      });
-    }
-    // console.log(req.body,"etjrtjgg")
-    // -----------------------------
-    // Parse fields if string
-    // -----------------------------
-    if (req.body.fields && typeof req.body.fields === "string") {
-      try {
-        req.body.fields = JSON.parse(req.body.fields);
-      } catch (err) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid JSON format for fields"
-        });
-      }
-    }
+//     if (!id) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Lead ID is required"
+//       });
+//     }
+//     // console.log(req.body,"etjrtjgg")
+//     // -----------------------------
+//     // Parse fields if string
+//     // -----------------------------
+//     if (req.body.fields && typeof req.body.fields === "string") {
+//       try {
+//         req.body.fields = JSON.parse(req.body.fields);
+//       } catch (err) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid JSON format for fields"
+//         });
+//       }
+//     }
 
-    let { OnConfirmed, statusRecord, ...otherFields } = req.body;
+//     let { OnConfirmed, statusRecord, ...otherFields } = req.body;
 
-    // -----------------------------
-    // Parse OnConfirmed if string
-    // -----------------------------
-    if (OnConfirmed && typeof OnConfirmed === "string") {
-      try {
-        OnConfirmed = JSON.parse(OnConfirmed);
-      } catch (err) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid JSON format for OnConfirmed"
-        });
-      }
-    }
+//     // -----------------------------
+//     // Parse OnConfirmed if string
+//     // -----------------------------
+//     if (OnConfirmed && typeof OnConfirmed === "string") {
+//       try {
+//         OnConfirmed = JSON.parse(OnConfirmed);
+//       } catch (err) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid JSON format for OnConfirmed"
+//         });
+//       }
+//     }
 
-    // -----------------------------
-    // Parse OnConfirmed.contact if string
-    // -----------------------------
-    if (OnConfirmed?.contact && typeof OnConfirmed.contact === "string") {
-      try {
-        OnConfirmed.contact = JSON.parse(OnConfirmed.contact);
-      } catch (err) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid JSON format for OnConfirmed.contact"
-        });
-      }
-    }
+//     // -----------------------------
+//     // Parse OnConfirmed.contact if string
+//     // -----------------------------
+//     if (OnConfirmed?.contact && typeof OnConfirmed.contact === "string") {
+//       try {
+//         OnConfirmed.contact = JSON.parse(OnConfirmed.contact);
+//       } catch (err) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid JSON format for OnConfirmed.contact"
+//         });
+//       }
+//     }
 
-    // -----------------------------
-    // Build Update Query
-    // -----------------------------
-    const updateQuery = {};
+//     // -----------------------------
+//     // Build Update Query
+//     // -----------------------------
+//     const updateQuery = {};
 
-    // Update normal fields
-    if (Object.keys(otherFields).length > 0) {
-      updateQuery.$set = otherFields;
-    }
-    if (statusRecord && Array.isArray(statusRecord) && statusRecord.length > 0) {
-      // Initialize $push if not already (could exist from OnConfirmed)
-      if (!updateQuery.$push) updateQuery.$push = {};
+//     // Update normal fields
+//     if (Object.keys(otherFields).length > 0) {
+//       updateQuery.$set = otherFields;
+//     }
+//     console.log(req.body)
+// // If it's a string (from FormData), parse it
 
-      updateQuery.$push.statusRecord = { $each: statusRecord };
-    }
-    // -----------------------------
-    // Check if OnConfirmed has at least one valid field
-    // -----------------------------
-    if (OnConfirmed && typeof OnConfirmed === "object") {
-      const hasValidData = Object.values(OnConfirmed).some((value) => {
-        if (Array.isArray(value)) return value.length > 0;
 
-        if (typeof value === "object" && value !== null) {
-          return Object.values(value).some(
-            (v) => v !== "" && v !== null && v !== undefined
-          );
-        }
+// if (typeof statusRecord === "string") {
+//   try {
+//     statusRecord = JSON.parse(statusRecord);
+//   } catch (err) {
+//     console.error("Invalid statusRecord JSON", err);
+//     statusRecord = [];
+//   }
+// }
 
-        return value !== "" && value !== null && value !== undefined;
-      });
+// if (Array.isArray(statusRecord) && statusRecord.length > 0) {
+//   if (!updateQuery.$push) updateQuery.$push = {};
+//   updateQuery.$push.statusRecord = { $each: statusRecord };
+// }
+//     // -----------------------------
+//     // Check if OnConfirmed has at least one valid field
+//     // -----------------------------
+//     if (OnConfirmed && typeof OnConfirmed === "object") {
+//       const hasValidData = Object.values(OnConfirmed).some((value) => {
+//         if (Array.isArray(value)) return value.length > 0;
 
-      if (hasValidData) {
-        // Add addedBy info
-        OnConfirmed.addedBy = {
-          userId: req.user?.id,
-          name: req.user?.name
-        };
+//         if (typeof value === "object" && value !== null) {
+//           return Object.values(value).some(
+//             (v) => v !== "" && v !== null && v !== undefined
+//           );
+//         }
 
-        updateQuery.$push = {
-          OnConfirmed: { $each: [OnConfirmed] }
-        };
-      }
-    }
+//         return value !== "" && value !== null && value !== undefined;
+//       });
 
-    // If nothing to update
-    if (Object.keys(updateQuery).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No valid fields provided for update"
-      });
-    }
+//       if (hasValidData) {
+//         // Add addedBy info
+//         OnConfirmed.addedBy = {
+//           userId: req.user?.id,
+//           name: req.user?.name
+//         };
 
-    // -----------------------------
-    // Execute Update
-    // -----------------------------
-    const updatedLead = await leadModel.findByIdAndUpdate(
-      id,
-      updateQuery,
-      { new: true, runValidators: true }
-    );
+//         updateQuery.$push = {
+//           OnConfirmed: { $each: [OnConfirmed] }
+//         };
+//       }
+//     }
 
-    if (!updatedLead) {
-      return res.status(404).json({
-        success: false,
-        message: "Lead not found"
-      });
-    }
+//     // If nothing to update
+//     if (Object.keys(updateQuery).length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "No valid fields provided for update"
+//       });
+//     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Lead updated successfully",
-      data: updatedLead
-    });
+//     // -----------------------------
+//     // Execute Update
+//     // -----------------------------
+//     const updatedLead = await leadModel.findByIdAndUpdate(
+//       id,
+//       updateQuery,
+//       { new: true, runValidators: true }
+//     );
 
-  } catch (error) {
-    next(error);
-  }
-};
+//     if (!updatedLead) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Lead not found"
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Lead updated successfully",
+//       data: updatedLead
+//     });
+
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 
 export const leadDashboard = async (req, res) => {
@@ -845,8 +964,8 @@ export const leadDashboard = async (req, res) => {
         },
       ]),
     ]);
-        
-// console.log(roleWise,totalleads,monthlyleads)
+
+    // console.log(roleWise,totalleads,monthlyleads)
     return res.status(200).json({
       success: true,
       data: {
@@ -898,64 +1017,65 @@ export const leadRecord = async (req, res) => {
     /* ----------------------------------
        2️⃣ Leads where user changed status (with populate)
     ---------------------------------- */
-  const userStatusLeads = await leadModel.aggregate([
-  // Filter statusRecord for this user
-  {
-    $addFields: {
-      userStatusRecords: {
-        $filter: {
-          input: "$statusRecord",
-          cond: { $eq: ["$$this.userId", userObjectId] },
-        },
-      },
-    },
-  },
-  { $match: { "userStatusRecords.0": { $exists: true } } },
-
-  // Populate only the matching user
-  {
-    $lookup: {
-      from: "employee_tables",
-      let: { uid: { $arrayElemAt: ["$userStatusRecords.userId", 0] } },
-      pipeline: [
-        { $match: { $expr: { $eq: ["$_id", "$$uid"] } } },
-        { $project: { name: 1, _id: 1 } },
-      ],
-      as: "userRecords",
-    },
-  },
-  // Populate only the matching role
-  {
-    $lookup: {
-      from: "roles",
-      let: { rid: { $arrayElemAt: ["$userStatusRecords.roleId", 0] } },
-      pipeline: [
-        { $match: { $expr: { $eq: ["$_id", "$$rid"] } } },
-        { $project: { role: 1, _id: 1 } },
-      ],
-      as: "roleRecords",
-    },
-  },
-  {
-    $project: {
-      _id: 1,
-      fields: 1,
-      statusRecord: {
-        $map: {
-          input: "$userStatusRecords",
-          as: "sr",
-          in: {
-            _id: "$$sr._id",
-            status: "$$sr.status",
-            changedAt: "$$sr.changedAt",
-            userId: { $arrayElemAt: ["$userRecords", 0] },
-            roleId: { $arrayElemAt: ["$roleRecords", 0] },
+    const userStatusLeads = await leadModel.aggregate([
+      // Filter statusRecord for this user
+      {
+        $addFields: {
+          userStatusRecords: {
+            $filter: {
+              input: "$statusRecord",
+              cond: { $eq: ["$$this.userId", userObjectId] },
+            },
           },
         },
       },
-    },
-  },
-]);
+      { $match: { "userStatusRecords.0": { $exists: true } } },
+
+      // Populate only the matching user
+      {
+        $lookup: {
+          from: "employee_tables",
+          let: { uid: { $arrayElemAt: ["$userStatusRecords.userId", 0] } },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$uid"] } } },
+            { $project: { name: 1, _id: 1 } },
+          ],
+          as: "userRecords",
+        },
+      },
+      // Populate only the matching role
+      {
+        $lookup: {
+          from: "roles",
+          let: { rid: { $arrayElemAt: ["$userStatusRecords.roleId", 0] } },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$rid"] } } },
+            { $project: { role: 1, _id: 1 } },
+          ],
+          as: "roleRecords",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          fields: 1,
+          statusRecord: {
+            $map: {
+              input: "$userStatusRecords",
+              as: "sr",
+              in: {
+                _id: "$$sr._id",
+                status: "$$sr.status",
+                changedAt: "$$sr.changedAt",
+                userId: { $arrayElemAt: ["$userRecords", 0] },
+                roleId: { $arrayElemAt: ["$roleRecords", 0] },
+              },
+            },
+          },
+        },
+      },
+    ]);
+
     /* ----------------------------------
        3️⃣ Total Status Counts (Last Status)
     ---------------------------------- */
@@ -973,7 +1093,7 @@ export const leadRecord = async (req, res) => {
         totalStatusCounts[lastStatus] += 1;
       }
     });
-
+console.log(totalStatusCounts,"pp",userStatusLeads.length)
     return res.status(200).json({
       success: true,
       data: {
