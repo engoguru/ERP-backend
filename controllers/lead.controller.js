@@ -301,19 +301,19 @@ export const leadView = async (req, res, next) => {
     const { id: employeeId, role, licenseId, roleID, permissionArray } = req.user;
 
     let query = { licenseId };
-// ---------------- PERMISSION-BASED FILTER ----------------
-if (permissionArray.includes("ldconverter")) {
-  query.roleID = roleID;
-  query["fields.status"] = { $nin: ["Confirmed", "Dump"] }; // exclude confirmed and dump
-} else if (permissionArray.includes("ldassign")) {
-  query.$or = [
-    { whoAssignedwho: { $exists: false } },
-    { whoAssignedwho: { $size: 0 } },
-    { "fields.status": "Dump" }
-  ];
-} else if (permissionArray.includes("ldprocessor")) {
-  query["fields.status"] = "Confirmed";
-}
+    // ---------------- PERMISSION-BASED FILTER ----------------
+    if (permissionArray.includes("ldconverter")) {
+      query.roleID = roleID;
+      query["fields.status"] = { $nin: ["Confirmed", "Dump"] }; // exclude confirmed and dump
+    } else if (permissionArray.includes("ldassign")) {
+      query.$or = [
+        { whoAssignedwho: { $exists: false } },
+        { whoAssignedwho: { $size: 0 } },
+        { "fields.status": "Dump" }
+      ];
+    } else if (permissionArray.includes("ldprocessor")) {
+      query["fields.status"] = "Confirmed";
+    }
 
     // ---------------- SEARCH FILTER ----------------
     if (search) {
@@ -405,7 +405,7 @@ export const leadViewOne = async (req, res, next) => {
         select: "name role employeeCode"
       })
       .lean();
-// console.log(lead,"rtog")
+    // console.log(lead,"rtog")
     // FIRST check if lead exists
     if (!lead) {
       const error = new Error("Lead not found");
@@ -461,6 +461,78 @@ export const leadViewOne = async (req, res, next) => {
   }
 };
 
+
+export const leadStatusRecord = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const allStatuses = ["Confirmed", "Interested", "Dump", "Not Connected"];
+
+    const data = await leadModel.aggregate([
+      // Match leads where this user exists in statusRecord
+      { $match: { "statusRecord.userId": new mongoose.Types.ObjectId(id) } },
+
+      // Unwind statusRecord to process counts
+      { $unwind: { path: "$statusRecord", preserveNullAndEmptyArrays: true } },
+
+      // Lookup user info
+      // Lookup user info but only include name
+      {
+        $lookup: {
+          from: "employee_tables", // your employee collection
+          let: { userId: "$statusRecord.userId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+            { $project: { name: 1, _id: 1 } } // only include name and _id
+          ],
+          as: "statusRecord.userId"
+        }
+      },
+      { $unwind: { path: "$statusRecord.userId", preserveNullAndEmptyArrays: true } },
+
+      // Lookup role info
+// Lookup role info but only include role field
+{
+  $lookup: {
+    from: "roles", // your role collection
+    let: { roleId: "$statusRecord.roleId" },
+    pipeline: [
+      { $match: { $expr: { $eq: ["$_id", "$$roleId"] } } },
+      { $project: { role: 1, _id: 1 } } // only include role and _id
+    ],
+    as: "statusRecord.roleId"
+  }
+},
+{ $unwind: { path: "$statusRecord.roleId", preserveNullAndEmptyArrays: true } },
+
+      // Group back by lead
+      {
+        $group: {
+          _id: "$_id",
+          fields: { $first: "$fields" },
+          statusRecord: { $push: "$statusRecord" }
+        }
+      },
+
+      // Compute statusCounts
+      {
+        $addFields: {
+          statusCounts: allStatuses.reduce((acc, status) => {
+            acc[status] = { $size: { $filter: { input: "$statusRecord", as: "sr", cond: { $eq: ["$$sr.status", status] } } } };
+            return acc;
+          }, {})
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const leadDelete = async (req, res, next) => {
   try {
@@ -589,7 +661,7 @@ export const leadUpdate = async (req, res, next) => {
         message: "Lead ID is required"
       });
     }
-// console.log(req.body,"etjrtjgg")
+    // console.log(req.body,"etjrtjgg")
     // -----------------------------
     // Parse fields if string
     // -----------------------------
@@ -604,7 +676,7 @@ export const leadUpdate = async (req, res, next) => {
       }
     }
 
-    let { OnConfirmed,statusRecord, ...otherFields } = req.body;
+    let { OnConfirmed, statusRecord, ...otherFields } = req.body;
 
     // -----------------------------
     // Parse OnConfirmed if string
@@ -643,7 +715,7 @@ export const leadUpdate = async (req, res, next) => {
     if (Object.keys(otherFields).length > 0) {
       updateQuery.$set = otherFields;
     }
-  if (statusRecord && Array.isArray(statusRecord) && statusRecord.length > 0) {
+    if (statusRecord && Array.isArray(statusRecord) && statusRecord.length > 0) {
       // Initialize $push if not already (could exist from OnConfirmed)
       if (!updateQuery.$push) updateQuery.$push = {};
 
@@ -713,48 +785,6 @@ export const leadUpdate = async (req, res, next) => {
   }
 };
 
-
-// export const leadDashboard = async (req, res) => {
-//   try {
-//     const { licenseId } = req.user;
-
-//     // Start of current month
-//     const startOfMonth = new Date(
-//       new Date().getFullYear(),
-//       new Date().getMonth(),
-//       1
-//     );
-
-//     const [
-//       totalleads,
-//       monthlyleads
-//     ] = await Promise.all([
-//       leadModel.countDocuments({ licenseId }),
-
-//       leadModel.find({
-//         licenseId,
-//         createdAt: { $gte: startOfMonth },
-//       }),
-
-//       // LicenseModel.findById(licenseId).select("activeUser maxUser"),
-//     ]);
-
-//     return res.status(200).json({
-//       success: true,
-//       data: {
-//         totalleads,
-//         monthlyleads,
-//         // license: licenseData,
-//       },
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//     });
-//   }
-// };
 
 export const leadDashboard = async (req, res) => {
   try {
@@ -833,26 +863,133 @@ export const leadDashboard = async (req, res) => {
     });
   }
 };
-// export const verifyMeta = async (req, res) => {
-//   try {
-//     const mode = req.query["hub.mode"];
-//     const token = req.query["hub.verify_token"];
-//     const challenge = req.query["hub.challenge"];
 
-//     console.log("mode:", mode, "token:", token, "challenge:", challenge);
-//     console.log("ENV Token:", process.env.Meta_Token);
+export const leadRecord = async (req, res) => {
+  try {
+    const { id } = req.params; // employee id
+    const userObjectId = new mongoose.Types.ObjectId(id);
 
-//     if (mode === "subscribe" && token === process.env.Meta_Token) {
-//       return res.status(200).send(challenge);
-//     } else {
-//       return res.status(403).send("Forbidden: token or mode mismatch");
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     return res.sendStatus(500);
-//   }
-// };
+    /* ----------------------------------
+       1️⃣ Assigned Leads (Month wise)
+    ---------------------------------- */
+    const assignedLeads = await leadModel.aggregate([
+      { $unwind: "$whoAssignedwho" },
+      { $match: { "whoAssignedwho.assignedTo": userObjectId } },
+      {
+        $project: {
+          _id: 1,
+          fields: 1,
+          assignedAt: "$whoAssignedwho.assignedAt",
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$assignedAt" },
+            year: { $year: "$assignedAt" },
+          },
+          leads: { $push: "$$ROOT" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
 
+    /* ----------------------------------
+       2️⃣ Leads where user changed status (with populate)
+    ---------------------------------- */
+  const userStatusLeads = await leadModel.aggregate([
+  // Filter statusRecord for this user
+  {
+    $addFields: {
+      userStatusRecords: {
+        $filter: {
+          input: "$statusRecord",
+          cond: { $eq: ["$$this.userId", userObjectId] },
+        },
+      },
+    },
+  },
+  { $match: { "userStatusRecords.0": { $exists: true } } },
+
+  // Populate only the matching user
+  {
+    $lookup: {
+      from: "employee_tables",
+      let: { uid: { $arrayElemAt: ["$userStatusRecords.userId", 0] } },
+      pipeline: [
+        { $match: { $expr: { $eq: ["$_id", "$$uid"] } } },
+        { $project: { name: 1, _id: 1 } },
+      ],
+      as: "userRecords",
+    },
+  },
+  // Populate only the matching role
+  {
+    $lookup: {
+      from: "roles",
+      let: { rid: { $arrayElemAt: ["$userStatusRecords.roleId", 0] } },
+      pipeline: [
+        { $match: { $expr: { $eq: ["$_id", "$$rid"] } } },
+        { $project: { role: 1, _id: 1 } },
+      ],
+      as: "roleRecords",
+    },
+  },
+  {
+    $project: {
+      _id: 1,
+      fields: 1,
+      statusRecord: {
+        $map: {
+          input: "$userStatusRecords",
+          as: "sr",
+          in: {
+            _id: "$$sr._id",
+            status: "$$sr.status",
+            changedAt: "$$sr.changedAt",
+            userId: { $arrayElemAt: ["$userRecords", 0] },
+            roleId: { $arrayElemAt: ["$roleRecords", 0] },
+          },
+        },
+      },
+    },
+  },
+]);
+    /* ----------------------------------
+       3️⃣ Total Status Counts (Last Status)
+    ---------------------------------- */
+    const totalStatusCounts = {
+      Confirmed: 0,
+      Interested: 0,
+      Dump: 0,
+      "Not Connected": 0,
+    };
+
+    userStatusLeads.forEach((lead) => {
+      const lastStatus =
+        lead.statusRecord[lead.statusRecord.length - 1]?.status;
+      if (lastStatus && totalStatusCounts[lastStatus] !== undefined) {
+        totalStatusCounts[lastStatus] += 1;
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        assignedLeads,
+        userStatusLeads,
+        totalStatusCounts,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
 export const verifyMeta = (req, res) => {
   try {
     // Extract query params
@@ -1061,21 +1198,21 @@ export const bulkLeadAssign = async (req, res) => {
     }
 
     // Bulk update
-   const result = await leadModel.updateMany(
-  { _id: { $in: leadIds } },
-  {
-    $push: {
-      whoAssignedwho: {
-        assignedTo: assignedTo,
-        assignedBy: id,
-        assignedAt: new Date(),
-      },
-    },
-    roleID:roleID
-  }
-);
+    const result = await leadModel.updateMany(
+      { _id: { $in: leadIds } },
+      {
+        $push: {
+          whoAssignedwho: {
+            assignedTo: assignedTo,
+            assignedBy: id,
+            assignedAt: new Date(),
+          },
+        },
+        roleID: roleID
+      }
+    );
 
-// console.log(result,"ogo")
+    // console.log(result,"ogo")
     return res.status(200).json({
       success: true,
       message: "Leads assigned successfully",
