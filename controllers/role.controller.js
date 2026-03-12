@@ -108,7 +108,7 @@ export const getRoles = async (req, res) => {
 // GET roles by department
 export const getRolePerDepartment = async (req, res) => {
   try {
-    const { departmentName } = req.query;
+    const { departmentName,departmentId } = req.query;
 
     if (!departmentName) {
       return res.status(400).json({ message: "Department name is required" });
@@ -133,6 +133,25 @@ export const getRolePerDepartment = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+export const getRolePerDepartment2 = async (req, res) => {
+  try {
+    const { departmentId } = req.query;
+
+console.log(departmentId)
+    // Find roles for this department
+    const roles = await Role.find({ departmentId:departmentId });
+
+    res.status(200).json({
+      success: true,
+      roles,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 // GET a single Role by ID
 export const getRoleById = async (req, res) => {
     try {

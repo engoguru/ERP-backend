@@ -17,6 +17,26 @@ const OnConfirmedSchema = new mongoose.Schema({
       url: String,
     },
   ],
+  status: [
+    {
+      label: {
+        default:"Pending",
+        type: String,
+        enum: ["Pending", "Ongoing", "Completed"],
+
+      },
+      date: {
+        type: Date,
+        default: Date.now
+      },
+       addedBy:{
+         type: mongoose.Schema.Types.ObjectId, ref: "Employee_Table"
+       }
+    }
+  ],
+  totalTime: {
+    type: Number, // in days
+  },
   addedBy: {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee_Table" },
     name: String,
@@ -90,14 +110,14 @@ const leadSchema = new mongoose.Schema({
     },
   ],
   OnConfirmed: [OnConfirmedSchema],
-statusRecord: [
-  {
-    roleId: { type: mongoose.Schema.Types.ObjectId, ref: "Role", required: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee_Table", required: true },
-    status: { type: String, required: true },
-    changedAt: { type: Date, default: Date.now }
-  }
-],
+  statusRecord: [
+    {
+      roleId: { type: mongoose.Schema.Types.ObjectId, ref: "Role", required: true },
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee_Table", required: true },
+      status: { type: String, required: true },
+      changedAt: { type: Date, default: Date.now }
+    }
+  ],
   roleID: { type: mongoose.Schema.Types.ObjectId, ref: "Role", }
 
 }, { timestamps: true });

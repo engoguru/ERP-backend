@@ -126,7 +126,7 @@ leadRoute.get("/view/:id", authorization, leadViewOne);
 // );
 leadRoute.put(
     "/update/:id",
-    authorization,
+    // authorization,
     uploadFields,
     uploadFilesMiddleware,
     leadUpdate               // controller

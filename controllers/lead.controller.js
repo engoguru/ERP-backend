@@ -293,64 +293,91 @@ export const leadCreate = async (req, res, next) => {
 // };
 export const leadView = async (req, res, next) => {
   try {
+    // ---------------- PAGINATION ----------------
     const page = parseInt(req.query.page) || 1;
     const itemsPerPage = parseInt(req.query.itemsPerPage) || 100;
     const skip = (page - 1) * itemsPerPage;
 
     const { search, status, date, assigned } = req.query;
-    const { id: employeeId, role, licenseId, roleID, permissionArray } = req.user;
+    const { id: employeeId, role, licenseId, roleID, permissionArray, department } = req.user;
 
-    let query = { licenseId };
-        // ---------------- STATUS FILTER ----------------
+    const query = { licenseId };
+    const andConditions = [];
 
     // ---------------- PERMISSION-BASED FILTER ----------------
     if (permissionArray.includes("ldconverter")) {
-      query.roleID = roleID;
-      query["fields.status"] = { $nin: ["Confirmed", "Dump"] }; // exclude confirmed and dump
+      andConditions.push({
+        roleID,
+        "fields.status": { $nin: ["Confirmed", "Dump"] },
+      });
     } else if (permissionArray.includes("ldassign")) {
-      query.$or = [
-        { whoAssignedwho: { $exists: false } },
-        { whoAssignedwho: { $size: 0 } },
-        { "fields.status": "Dump" }
-      ];
+      andConditions.push({
+        $or: [
+          { whoAssignedwho: { $exists: false } },
+          { whoAssignedwho: { $size: 0 } },
+          { "fields.status": "Dump" },
+        ],
+      });
     } else if (permissionArray.includes("ldprocessor")) {
-      query["fields.status"] = "Confirmed";
+      andConditions.push({ "fields.status": "Confirmed" });
+    } else if (/Manager/i.test(role)) {
+      andConditions.push({
+        $or: [
+          { roleID: roleID },
+          {
+            whoAssignedwho: {
+              $elemMatch: {
+                assignedTo: employeeId
+              }
+            }
+          }
+        ]
+      });
+    } else if (department != "Admin" && !/Manager/i.test(role)) {
+      // Non-Manager: filter only by roleID
+      // console.log(department, "vikas")
+      andConditions.push({
+        roleID: roleID
+      });
     }
 
     // ---------------- SEARCH FILTER ----------------
     if (search) {
-      const searchRegex = new RegExp(search, "i");
+      // Escape special regex characters
+      const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const searchRegex = new RegExp(escapeRegex(search), "i");
 
-      query.$or = [
-        { "fields.Name": searchRegex },
-        { "fields.Email": searchRegex },
-        { "fields.Contact": searchRegex },
-        { "fields.description": searchRegex },
-        { "fields.status": searchRegex },
-        { source: searchRegex }
-      ];
+      andConditions.push({
+        $or: [
+          { "fields.Name": searchRegex },
+          { "fields.Email": searchRegex },
+          { "fields.Contact": searchRegex },
+          { "fields.description": searchRegex },
+          { "fields.status": searchRegex },
+          { source: searchRegex },
+        ],
+      });
     }
 
     // ---------------- STATUS FILTER ----------------
     if (status) {
       if (status === "other") {
-        // if "other", return leads with empty or null status
-        query["fields.status"] = { $in: ["", null] };
-        query[""] = { $in: ["", null] };
-        
+        andConditions.push({ "fields.status": { $in: ["", null] } });
       } else {
-        query["fields.status"] = status;
+        andConditions.push({ "fields.status": status });
       }
     }
 
     // ---------------- ASSIGNED FILTER ----------------
     if (assigned === "assigned") {
-      query.whoAssignedwho = { $exists: true, $ne: [] };
+      andConditions.push({ whoAssignedwho: { $exists: true, $ne: [] } });
     } else if (assigned === "unassigned") {
-      query.$or = [
-        { whoAssignedwho: { $exists: false } },
-        { whoAssignedwho: { $size: 0 } }
-      ];
+      andConditions.push({
+        $or: [
+          { whoAssignedwho: { $exists: false } },
+          { whoAssignedwho: { $size: 0 } },
+        ],
+      });
     }
 
     // ---------------- DATE FILTER ----------------
@@ -359,14 +386,18 @@ export const leadView = async (req, res, next) => {
       const end = new Date(date);
       end.setHours(23, 59, 59, 999);
 
-      query.createdAt = {
-        $gte: start,
-        $lte: end
-      };
+      andConditions.push({
+        createdAt: { $gte: start, $lte: end },
+      });
     }
 
-    const total = await leadModel.countDocuments(query);
+    // Combine all conditions into $and
+    if (andConditions.length) {
+      query.$and = andConditions;
+    }
 
+    // ---------------- FETCH DATA ----------------
+    const total = await leadModel.countDocuments(query);
     const leads = await leadModel
       .find(query)
       .sort({ createdAt: -1 })
@@ -380,9 +411,8 @@ export const leadView = async (req, res, next) => {
       itemsPerPage,
       total,
       totalPages: Math.ceil(total / itemsPerPage),
-      data: leads
+      data: leads,
     });
-
   } catch (error) {
     return next(error);
   }
@@ -575,48 +605,78 @@ export const leadDelete = async (req, res, next) => {
 
 export const leadUpdate = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
+    const { id, } = req.params;
+// console.log(objId,"ll")
     if (!id) {
       return res.status(400).json({ success: false, message: "Lead ID is required" });
     }
 
     // Destructure request body
-    let { fields, OnConfirmed, statusRecord, ...otherFields } = req.body;
-
+    let { fields, OnConfirmed, statusRecord, status, objId,...otherFields } = req.body;
+    console.log(status, "status")
     // -----------------------------
     // Parse fields if string (from FormData)
     // -----------------------------
     if (fields && typeof fields === "string") {
-      try { fields = JSON.parse(fields); } 
+      try { fields = JSON.parse(fields); }
       catch { return res.status(400).json({ success: false, message: "Invalid JSON for fields" }); }
     }
 
     // Parse OnConfirmed if string
     if (OnConfirmed && typeof OnConfirmed === "string") {
-      try { OnConfirmed = JSON.parse(OnConfirmed); } 
+      try { OnConfirmed = JSON.parse(OnConfirmed); }
       catch { return res.status(400).json({ success: false, message: "Invalid JSON for OnConfirmed" }); }
     }
 
     // Parse OnConfirmed.contact if string
     if (OnConfirmed?.contact && typeof OnConfirmed.contact === "string") {
-      try { OnConfirmed.contact = JSON.parse(OnConfirmed.contact); } 
+      try { OnConfirmed.contact = JSON.parse(OnConfirmed.contact); }
       catch { return res.status(400).json({ success: false, message: "Invalid JSON for OnConfirmed.contact" }); }
     }
-
+   // Build update query
+    // -----------------------------
+    const updateQuery = {};
     // Parse statusRecord if string
     if (statusRecord && typeof statusRecord === "string") {
-      try { statusRecord = JSON.parse(statusRecord); } 
+      try { statusRecord = JSON.parse(statusRecord); }
       catch {
         console.error("Invalid statusRecord JSON");
         statusRecord = [];
       }
     }
+    const statusData = await leadModel.findOne({ _id: id })
+    // console.log(statusData)
+    if (status && status.length > 0) {
+      const latestStatus = status[status.length - 1];
+      const statusId = objId; // ID to match
 
+      // Find the object in OnConfirmed array that matches the ID
+      const index = statusData?.OnConfirmed.findIndex(
+  item => String(item._id) === String(statusId)
+);
+      // console.log(index, statusId,objId,latestStatus, "index")
+      if (index !== -1) {
+        // Calculate totalTime if latest status is Completed
+        if (latestStatus.label === "Completed") {
+          const firstDate = new Date(statusData?.OnConfirmed[index].status[0].date);
+          const completedDate = new Date(latestStatus.date);
+
+          const diffMs = completedDate - firstDate;
+          const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+          // Update totalTime in the matched object
+          statusData.OnConfirmed[index].totalTime = totalDays;
+          // updateQuery.$set.OnConfirmed = statusData.OnConfirmed
+           await statusData.save()
+        }
+      }
+      // Update status array in the matched object
+      statusData.OnConfirmed[index].status = status;
+      await statusData.save()
+      // updateQuery.$set.OnConfirmed[index] = status
+    }
     // -----------------------------
-    // Build update query
-    // -----------------------------
-    const updateQuery = {};
+ 
 
     // Update other normal fields
     if (Object.keys(otherFields).length > 0) {
@@ -648,6 +708,8 @@ export const leadUpdate = async (req, res, next) => {
     // -----------------------------
     // Execute update
     // -----------------------------
+    // await statusData.save()
+    // console.log(statusData,"statuss")
     const updatedLead = await leadModel.findByIdAndUpdate(id, updateQuery, {
       new: true,
       runValidators: true,
@@ -1093,7 +1155,7 @@ export const leadRecord = async (req, res) => {
         totalStatusCounts[lastStatus] += 1;
       }
     });
-console.log(totalStatusCounts,"pp",userStatusLeads.length)
+    // console.log(totalStatusCounts, "pp", userStatusLeads.length)
     return res.status(200).json({
       success: true,
       data: {

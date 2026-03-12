@@ -6,6 +6,7 @@ import {
   updateRole,
   deleteRole,
   getRolePerDepartment,
+  getRolePerDepartment2,
 } from "../controllers/role.controller.js";
 import { authorization } from "../utils/authorization.js";
 
@@ -18,5 +19,6 @@ Roleroute.get("/get", getRoles);           // Get all roles
 // Roleroute.delete("/:id", deleteRole);   // Delete role
 
 Roleroute.get("/viewViaDepartment",getRolePerDepartment)
+Roleroute.get("/viewViaDepartment2",getRolePerDepartment2 )
 
 export default Roleroute;
