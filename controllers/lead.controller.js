@@ -353,9 +353,7 @@ export const leadView = async (req, res, next) => {
     const andConditions = [];
 
     // ---------------- PERMISSION-BASED FILTER ----------------
-    if (department !== "Admin") {
-      andConditions.push({ roleID });
-    }
+  
     if (permissionArray.includes("ldconverter")) {
       andConditions.push({
         "fields.status": { $nin: ["Dump"] }
@@ -385,6 +383,10 @@ export const leadView = async (req, res, next) => {
         ]
       });
     }
+
+  if (department !== "Admin" && !permissionArray.includes("ldassign") && !permissionArray.includes("ldprocessor")) {
+  andConditions.push({ roleID });
+}
     // ---------------- SEARCH FILTER ----------------
     if (search) {
       // Escape special regex characters
