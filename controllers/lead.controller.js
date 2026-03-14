@@ -36,6 +36,51 @@ import mongoose from "mongoose";
 //   }
 // };
 
+// export const leadCreateInside = async (req, res, next) => {
+//   try {
+//     if (!req.body || Object.keys(req.body).length === 0) {
+//       const error = new Error("Request body cannot be empty");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+//     // Extract phone number from request body
+//     const phone = req.body.Contact; // adjust key if your number is under a different field
+//     if (!phone) {
+//       const error = new Error("Phone number is required");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+//     // Take last 10 digits only
+//     const last10 = phone.replace(/\D/g, "").slice(-10); // removes non-digit chars
+
+//     // Check for duplicate in the DB
+//     const existingLead = await leadModel.findOne({
+//       "fields.Contact": { $regex: `${last10}$` } // match last 10 digits
+//     });
+
+//     if (existingLead) {
+//       const error = new Error("Phone number already exists");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+//     // Save new lead
+//     const newLead = await leadModel.create({
+//       licenseId: req.user.licenseId,
+//       fields: req.body,
+//       source: "Portal"
+//     });
+
+//     return res.status(201).json({
+//       success: true,
+//       data: newLead
+//     });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 export const leadCreateInside = async (req, res, next) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -45,7 +90,7 @@ export const leadCreateInside = async (req, res, next) => {
     }
 
     // Extract phone number from request body
-    const phone = req.body.Contact; // adjust key if your number is under a different field
+    const phone = req.body.Contact;
     if (!phone) {
       const error = new Error("Phone number is required");
       error.statusCode = 400;
@@ -53,7 +98,7 @@ export const leadCreateInside = async (req, res, next) => {
     }
 
     // Take last 10 digits only
-    const last10 = phone.replace(/\D/g, "").slice(-10); // removes non-digit chars
+    const last10 = phone.replace(/\D/g, "").slice(-10);
 
     // Check for duplicate in the DB
     const existingLead = await leadModel.findOne({
@@ -66,11 +111,14 @@ export const leadCreateInside = async (req, res, next) => {
       return next(error);
     }
 
+    // Make source dynamic (default to 'Portal' if not provided)
+    const source = req.body.source || "Portal";
+
     // Save new lead
     const newLead = await leadModel.create({
       licenseId: req.user.licenseId,
       fields: req.body,
-      source: "Portal"
+      source: source
     });
 
     return res.status(201).json({
@@ -305,12 +353,15 @@ export const leadView = async (req, res, next) => {
     const andConditions = [];
 
     // ---------------- PERMISSION-BASED FILTER ----------------
+    if (department !== "Admin") {
+      andConditions.push({ roleID });
+    }
     if (permissionArray.includes("ldconverter")) {
       andConditions.push({
-        roleID,
-        "fields.status": { $nin: ["Confirmed", "Dump"] },
+        "fields.status": { $nin: ["Dump"] }
       });
-    } else if (permissionArray.includes("ldassign")) {
+    }
+    else if (permissionArray.includes("ldassign")) {
       andConditions.push({
         $or: [
           { whoAssignedwho: { $exists: false } },
@@ -318,29 +369,22 @@ export const leadView = async (req, res, next) => {
           { "fields.status": "Dump" },
         ],
       });
-    } else if (permissionArray.includes("ldprocessor")) {
+    }
+    else if (permissionArray.includes("ldprocessor")) {
       andConditions.push({ "fields.status": "Confirmed" });
-    } else if (/Manager/i.test(role)) {
+    }
+    else if (/Manager/i.test(role)) {
       andConditions.push({
         $or: [
-          { roleID: roleID },
+          { roleID },
           {
             whoAssignedwho: {
-              $elemMatch: {
-                assignedTo: employeeId
-              }
+              $elemMatch: { assignedTo: employeeId }
             }
           }
         ]
       });
-    } else if (department != "Admin" && !/Manager/i.test(role)) {
-      // Non-Manager: filter only by roleID
-      // console.log(department, "vikas")
-      andConditions.push({
-        roleID: roleID
-      });
     }
-
     // ---------------- SEARCH FILTER ----------------
     if (search) {
       // Escape special regex characters
@@ -604,15 +648,16 @@ export const leadDelete = async (req, res, next) => {
 
 
 export const leadUpdate = async (req, res, next) => {
+  // console.log(req.body,"uiui")
   try {
     const { id, } = req.params;
-// console.log(objId,"ll")
+    // console.log(objId,"ll")
     if (!id) {
       return res.status(400).json({ success: false, message: "Lead ID is required" });
     }
 
     // Destructure request body
-    let { fields, OnConfirmed, statusRecord, status, objId,...otherFields } = req.body;
+    let { fields, OnConfirmed, statusRecord, status, objId, ...otherFields } = req.body;
     console.log(status, "status")
     // -----------------------------
     // Parse fields if string (from FormData)
@@ -633,7 +678,7 @@ export const leadUpdate = async (req, res, next) => {
       try { OnConfirmed.contact = JSON.parse(OnConfirmed.contact); }
       catch { return res.status(400).json({ success: false, message: "Invalid JSON for OnConfirmed.contact" }); }
     }
-   // Build update query
+    // Build update query
     // -----------------------------
     const updateQuery = {};
     // Parse statusRecord if string
@@ -652,8 +697,8 @@ export const leadUpdate = async (req, res, next) => {
 
       // Find the object in OnConfirmed array that matches the ID
       const index = statusData?.OnConfirmed.findIndex(
-  item => String(item._id) === String(statusId)
-);
+        item => String(item._id) === String(statusId)
+      );
       // console.log(index, statusId,objId,latestStatus, "index")
       if (index !== -1) {
         // Calculate totalTime if latest status is Completed
@@ -667,7 +712,7 @@ export const leadUpdate = async (req, res, next) => {
           // Update totalTime in the matched object
           statusData.OnConfirmed[index].totalTime = totalDays;
           // updateQuery.$set.OnConfirmed = statusData.OnConfirmed
-           await statusData.save()
+          await statusData.save()
         }
       }
       // Update status array in the matched object
@@ -676,7 +721,7 @@ export const leadUpdate = async (req, res, next) => {
       // updateQuery.$set.OnConfirmed[index] = status
     }
     // -----------------------------
- 
+
 
     // Update other normal fields
     if (Object.keys(otherFields).length > 0) {
@@ -1051,7 +1096,7 @@ export const leadRecord = async (req, res) => {
     const userObjectId = new mongoose.Types.ObjectId(id);
 
     /* ----------------------------------
-       1️⃣ Assigned Leads (Month wise)
+        Assigned Leads (Month wise)
     ---------------------------------- */
     const assignedLeads = await leadModel.aggregate([
       { $unwind: "$whoAssignedwho" },
@@ -1077,7 +1122,7 @@ export const leadRecord = async (req, res) => {
     ]);
 
     /* ----------------------------------
-       2️⃣ Leads where user changed status (with populate)
+     Leads where user changed status (with populate)
     ---------------------------------- */
     const userStatusLeads = await leadModel.aggregate([
       // Filter statusRecord for this user
@@ -1139,7 +1184,7 @@ export const leadRecord = async (req, res) => {
     ]);
 
     /* ----------------------------------
-       3️⃣ Total Status Counts (Last Status)
+       Total Status Counts (Last Status)
     ---------------------------------- */
     const totalStatusCounts = {
       Confirmed: 0,

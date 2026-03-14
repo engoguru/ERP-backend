@@ -62,7 +62,7 @@ const leadSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    required: true,
+    // required: true,
     trim: true
   },
   whoAssignedwho: [

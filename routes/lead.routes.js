@@ -46,6 +46,7 @@ const leadSchemaValidate = (req, res, next) => {
 
 
 const uploadFilesMiddleware = async (req, res, next) => {
+
     try {
 
         const files = req.files || {};
@@ -126,7 +127,7 @@ leadRoute.get("/view/:id", authorization, leadViewOne);
 // );
 leadRoute.put(
     "/update/:id",
-    // authorization,
+    authorization,
     uploadFields,
     uploadFilesMiddleware,
     leadUpdate               // controller
