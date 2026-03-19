@@ -124,3 +124,5 @@ const leadSchema = new mongoose.Schema({
 
 const leadModel = mongoose.model("leadTable", leadSchema);
 export default leadModel;
+
+// this model handle the data reletd to      

@@ -346,14 +346,14 @@ export const leadView = async (req, res, next) => {
     const itemsPerPage = parseInt(req.query.itemsPerPage) || 100;
     const skip = (page - 1) * itemsPerPage;
 
-    const { search, status, date, assigned } = req.query;
+    const { search, status, date, assigned ,source} = req.query;
     const { id: employeeId, role, licenseId, roleID, permissionArray, department } = req.user;
-
+  //  console.log(source)
     const query = { licenseId };
     const andConditions = [];
 
     // ---------------- PERMISSION-BASED FILTER ----------------
-  
+
     if (permissionArray.includes("ldconverter")) {
       andConditions.push({
         "fields.status": { $nin: ["Dump"] }
@@ -371,10 +371,10 @@ export const leadView = async (req, res, next) => {
     else if (permissionArray.includes("ldprocessor")) {
       andConditions.push({ "fields.status": "Confirmed" });
     }
-    else if (/Manager/i.test(role)) {
+    else if (/Manager/i.test(role.trim())) {
       andConditions.push({
         $or: [
-          { roleID },
+          // { roleID },
           {
             whoAssignedwho: {
               $elemMatch: { assignedTo: employeeId }
@@ -384,9 +384,10 @@ export const leadView = async (req, res, next) => {
       });
     }
 
-  if (department !== "Admin" && !permissionArray.includes("ldassign") && !permissionArray.includes("ldprocessor")) {
-  andConditions.push({ roleID });
-}
+    if (department !== "Admin" && !permissionArray.includes("ldassign") && !permissionArray.includes("ldprocessor")
+    &&!/Manager/i.test(role.trim())) {
+      andConditions.push({ roleID });
+    }
     // ---------------- SEARCH FILTER ----------------
     if (search) {
       // Escape special regex characters
@@ -436,12 +437,20 @@ export const leadView = async (req, res, next) => {
         createdAt: { $gte: start, $lte: end },
       });
     }
+// -------------------source filter---------------
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+if (source) {
+  andConditions.push({
+    source: { $regex: `.*${escapeRegex(source)}.*`, $options: "i" }
+  }); 
+}
 
     // Combine all conditions into $and
     if (andConditions.length) {
       query.$and = andConditions;
     }
-
+// console.log(andConditions,"pp")
     // ---------------- FETCH DATA ----------------
     const total = await leadModel.countDocuments(query);
     const leads = await leadModel
@@ -654,13 +663,14 @@ export const leadUpdate = async (req, res, next) => {
   try {
     const { id, } = req.params;
     // console.log(objId,"ll")
+    const { name:empName, id: empId } = req.user
     if (!id) {
       return res.status(400).json({ success: false, message: "Lead ID is required" });
     }
 
     // Destructure request body
     let { fields, OnConfirmed, statusRecord, status, objId, ...otherFields } = req.body;
-    console.log(status, "status")
+    // console.log(status, "status")
     // -----------------------------
     // Parse fields if string (from FormData)
     // -----------------------------
@@ -674,7 +684,13 @@ export const leadUpdate = async (req, res, next) => {
       try { OnConfirmed = JSON.parse(OnConfirmed); }
       catch { return res.status(400).json({ success: false, message: "Invalid JSON for OnConfirmed" }); }
     }
-
+    // Add employee info
+    if (OnConfirmed && !status) {
+      OnConfirmed.addedBy = {
+        id: empId,    // reference to employee
+        name: empName // store employee name
+      };
+    }
     // Parse OnConfirmed.contact if string
     if (OnConfirmed?.contact && typeof OnConfirmed.contact === "string") {
       try { OnConfirmed.contact = JSON.parse(OnConfirmed.contact); }

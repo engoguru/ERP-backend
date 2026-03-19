@@ -29,46 +29,61 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const chatMemory = {};
 
 export const chatbot = async (req, res) => {
-    try {
-        const { message, userId } = req.body;
+  try {
+    const { message, userId } = req.body;
 
-        // Load recent chat memory for this user (last 5 messages)
-        const chatHistory = chatMemory[userId] || [];
+    if (!message || !userId) {
+      return res.status(400).json({ error: "Missing message or userId" });
+    }
 
-        // Prepare prompt for AI
-        const prompt = `
-You are HR assistant for an ERP system. 
-Assist the user based on their query and context.
+    const chatHistory = chatMemory[userId] || [];
 
-Chat history:
-${chatHistory.map(m => `${m.role}: ${m.text}`).join("\n")}
-
-Current user query: ${message}
+    const systemInstruction = `
+You are an HR assistant for an ERP system.
+Help users with employee, leave, payroll, and task queries.
 
 Rules:
-- Give a concise reply (1-2 sentences max)
-- Do not use Markdown, stars (*), or bullets
-- Make it polite and actionable
+- Reply in 1-2 sentences only
+- No markdown, no bullets, no stars
+- Be polite and actionable
 `;
 
-        // Call Gemini model
-        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-        const result = await model.generateContent(prompt);
-        const reply = result.response.text();
-        // console.log(result)
+    const messages = [
+      {
+        role: "user",
+        parts: [{ text: systemInstruction }]
+      },
+      ...chatHistory.map(m => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.text }]
+      })),
+      {
+        role: "user",
+        parts: [{ text: message }]
+      }
+    ];
 
-        // Save user message + AI reply in chat memory (keep last 5)
-        chatMemory[userId] = [
-            ...chatHistory.slice(-4),
-            { role: "user", text: message },
-            { role: "assistant", text: reply }
-        ];
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3-flash-preview"
+    });
 
-        res.json({ reply, chatMemory });
+    const result = await model.generateContent({
+      contents: messages
+    });
 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Something went wrong" });
-    }
+    const reply = result.response.text();
+
+    // Save memory (limit to last 5 exchanges)
+    chatMemory[userId] = [
+      ...chatHistory.slice(-4),
+      { role: "user", text: message },
+      { role: "assistant", text: reply }
+    ];
+
+    res.json({ reply });
+
+  } catch (error) {
+    console.error("Assistant error:", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
 };
-
