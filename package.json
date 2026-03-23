@@ -19,9 +19,11 @@
     "axios": "^1.13.4",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.66.4",
+    "canvas": "^3.2.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
@@ -33,7 +35,9 @@
     "multer": "^2.0.2",
     "nanoid": "^5.1.6",
     "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.12",
+    "pdf-lib": "^1.17.1",
     "validator": "^13.15.26"
   },
   "devDependencies": {

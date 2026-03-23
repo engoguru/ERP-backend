@@ -28,6 +28,7 @@ import Issueroute from "./routes/employees/issue.routes.js";
 import chatRoute from "./routes/chatbot.routes.js";
 import Roleroute from "./routes/role.routes.js";
 import departmentRoute from "./routes/department.routes.js";
+import idRouter from "./routes/idCard.routes.js";
 
 dotenv.config();
 
@@ -97,6 +98,8 @@ app.use("/api/role",Roleroute)
 app.use("/api/department",departmentRoute)
 
 app.use("/api/chat",chatRoute)
+
+app.use("/api/id",idRouter)
 
 // ────────── ERROR HANDLER ──────────
 app.use(errorHandler);
