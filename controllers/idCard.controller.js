@@ -246,12 +246,12 @@ export const generatePremiumCard = async (user, customId) => {
   ctx.lineWidth = 2;
   ctx.strokeRect(400, 140, 150, 90);
 
-  ctx.fillStyle = '#C9A227';
-  ctx.font = 'bold 16px Arial';
+  ctx.fillStyle = '#f7f6f3';
+  ctx.font = 'bold 1px Arial';
   ctx.fillText('AUTHORIZED', 420, 175);
 
-  ctx.fillStyle = '#555';
-  ctx.font = '12px Arial';
+  ctx.fillStyle = '#f3f1f1';
+  ctx.font = '2px Arial';
   ctx.fillText('SEMINAR ACCESS', 415, 200);
 
   // Bottom Shape
@@ -288,119 +288,119 @@ import EmployeeModel from '../models/employees/employee.model.js';
 
 
 
-export const exportLeadsToExcel = async (req, res) => {
-  try {
-    const { status, source } = req.query;
+// export const exportLeadsToExcel = async (req, res) => {
+//   try {
+//     const { status, source } = req.query;
 
-    const query = {};
-    if (source) {
-      query.source = {
-        $regex: `.*${escapeRegex(source)}.*`,
-        $options: 'i',
-      };
-    }
-    if (status) {
-      query['fields.status'] = status;
-    }
+//     const query = {};
+//     if (source) {
+//       query.source = {
+//         $regex: `.*${escapeRegex(source)}.*`,
+//         $options: 'i',
+//       };
+//     }
+//     if (status) {
+//       query['fields.status'] = status;
+//     }
 
-    // Fetch leads
-    const leads = await leadModel.find(query).sort({ createdAt: -1 });
+//     // Fetch leads
+//     const leads = await leadModel.find(query).sort({ createdAt: -1 });
 
-    // ===== Populate addedBy for OnConfirmed =====
-    for (const lead of leads) {
-      if (Array.isArray(lead.OnConfirmed)) {
-        for (const oc of lead.OnConfirmed) {
-          if (oc.addedBy?.userId) {
-            const user = await EmployeeModel.findById(oc.addedBy.userId).select('name');
-            if (user) {
-              oc.addedBy.name = user.name;
-            }
-          }
-        }
-      }
-    }
+//     // ===== Populate addedBy for OnConfirmed =====
+//     for (const lead of leads) {
+//       if (Array.isArray(lead.OnConfirmed)) {
+//         for (const oc of lead.OnConfirmed) {
+//           if (oc.addedBy?.userId) {
+//             const user = await EmployeeModel.findById(oc.addedBy.userId).select('name');
+//             if (user) {
+//               oc.addedBy.name = user.name;
+//             }
+//           }
+//         }
+//       }
+//     }
 
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Leads');
+//     const workbook = new ExcelJS.Workbook();
+//     const worksheet = workbook.addWorksheet('Leads');
 
-    // ===== Columns =====
-    worksheet.columns = [
-      { header: 'Name', key: 'name', width: 25 },
-      { header: 'Email', key: 'email', width: 30 },
-      { header: 'Contact', key: 'contact', width: 20 },
-      { header: 'NGO Name', key: 'ngoName', width: 30 },
-      { header: 'City', key: 'city', width: 20 },
-      { header: 'State', key: 'state', width: 20 },
-      { header: 'Status', key: 'status', width: 20 },
-      { header: 'Source', key: 'source', width: 25 },
-      { header: 'OnConfirmed', key: 'onConfirmed', width: 80 },
-    ];
+//     // ===== Columns =====
+//     worksheet.columns = [
+//       { header: 'Name', key: 'name', width: 25 },
+//       { header: 'Email', key: 'email', width: 30 },
+//       { header: 'Contact', key: 'contact', width: 20 },
+//       { header: 'NGO Name', key: 'ngoName', width: 30 },
+//       { header: 'City', key: 'city', width: 20 },
+//       { header: 'State', key: 'state', width: 20 },
+//       { header: 'Status', key: 'status', width: 20 },
+//       { header: 'Source', key: 'source', width: 25 },
+//       { header: 'OnConfirmed', key: 'onConfirmed', width: 80 },
+//     ];
 
-    // ===== Helper to format OnConfirmed with colors =====
-    const formatOnConfirmedRichText = (onConfirmedArray) => {
-      return (onConfirmedArray || []).map((item) => {
-        const service = item.nameOfService || '';
-        const total = item.totalAmount || '';
-        const paid = item.paidAmount || '';
-        const unpaid = item.unpaidAmount || '';
-        const addedByName = item.addedBy?.name || '';
+//     // ===== Helper to format OnConfirmed with colors =====
+//     const formatOnConfirmedRichText = (onConfirmedArray) => {
+//       return (onConfirmedArray || []).map((item) => {
+//         const service = item.nameOfService || '';
+//         const total = item.totalAmount || '';
+//         const paid = item.paidAmount || '';
+//         const unpaid = item.unpaidAmount || '';
+//         const addedByName = item.addedBy?.name || '';
 
-        const richText = [];
-        if (service) richText.push({ text: `Service: ${service}\n`, font: { color: { argb: 'FF000000' } } });
-        if (total || paid || unpaid) {
-          richText.push({ text: `Total: ${total}`, font: { color: { argb: 'FF000000' } } });
-          richText.push({ text: `, Paid: ${paid}`, font: { color: { argb: 'FF28A745' } } }); // green
-          richText.push({ text: `, Unpaid: ${unpaid}\n`, font: { color: { argb: 'FFDC3545' } } }); // red
-        }
-        if (addedByName) richText.push({ text: `Added By: ${addedByName}\n`, font: { color: { argb: 'FF006400' }, size: 12 } }); // dark green
-        return { richText };
-      });
-    };
+//         const richText = [];
+//         if (service) richText.push({ text: `Service: ${service}\n`, font: { color: { argb: 'FF000000' } } });
+//         if (total || paid || unpaid) {
+//           richText.push({ text: `Total: ${total}`, font: { color: { argb: 'FF000000' } } });
+//           richText.push({ text: `, Paid: ${paid}`, font: { color: { argb: 'FF28A745' } } }); // green
+//           richText.push({ text: `, Unpaid: ${unpaid}\n`, font: { color: { argb: 'FFDC3545' } } }); // red
+//         }
+//         if (addedByName) richText.push({ text: `Added By: ${addedByName}\n`, font: { color: { argb: 'FF006400' }, size: 12 } }); // dark green
+//         return { richText };
+//       });
+//     };
 
-    // ===== Add rows =====
-    leads.forEach((lead) => {
-      const getField = (key) => (lead.fields instanceof Map ? lead.fields.get(key) : lead.fields?.[key]);
+//     // ===== Add rows =====
+//     leads.forEach((lead) => {
+//       const getField = (key) => (lead.fields instanceof Map ? lead.fields.get(key) : lead.fields?.[key]);
 
-      const richTextArray = formatOnConfirmedRichText(lead.OnConfirmed);
+//       const richTextArray = formatOnConfirmedRichText(lead.OnConfirmed);
 
-      const cellRichText = [];
-      richTextArray.forEach((item, index) => {
-        cellRichText.push(...item.richText);
-        if (index < richTextArray.length - 1) {
-          cellRichText.push({ text: '\n', font: { color: { argb: 'FF000000' } } });
-        }
-      });
+//       const cellRichText = [];
+//       richTextArray.forEach((item, index) => {
+//         cellRichText.push(...item.richText);
+//         if (index < richTextArray.length - 1) {
+//           cellRichText.push({ text: '\n', font: { color: { argb: 'FF000000' } } });
+//         }
+//       });
 
-      const row = worksheet.addRow({
-        name: getField('Name') || '',
-        email: getField('Email') || '',
-        contact: getField('Contact') || '',
-        ngoName: getField('ngoName') || '',
-        city: getField('city') || '',
-        state: getField('state') || '',
-        status: getField('status') || '',
-        source: lead.source || '',
-      });
+//       const row = worksheet.addRow({
+//         name: getField('Name') || '',
+//         email: getField('Email') || '',
+//         contact: getField('Contact') || '',
+//         ngoName: getField('ngoName') || '',
+//         city: getField('city') || '',
+//         state: getField('state') || '',
+//         status: getField('status') || '',
+//         source: lead.source || '',
+//       });
 
-      const onConfirmedCell = row.getCell('onConfirmed');
-      onConfirmedCell.value = { richText: cellRichText };
-      onConfirmedCell.alignment = { wrapText: true };
-    });
+//       const onConfirmedCell = row.getCell('onConfirmed');
+//       onConfirmedCell.value = { richText: cellRichText };
+//       onConfirmedCell.alignment = { wrapText: true };
+//     });
 
-    // ===== Response =====
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader('Content-Disposition', 'attachment; filename=leads.xlsx');
+//     // ===== Response =====
+//     res.setHeader(
+//       'Content-Type',
+//       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+//     );
+//     res.setHeader('Content-Disposition', 'attachment; filename=leads.xlsx');
 
-    await workbook.xlsx.write(res);
-    res.end();
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Error exporting Excel');
-  }
-};
+//     await workbook.xlsx.write(res);
+//     res.end();
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send('Error exporting Excel');
+//   }
+// };
 // ===== Create PDF =====
 export const createIDCard = async (req, res) => {
   try {
@@ -428,7 +428,7 @@ export const createIDCard = async (req, res) => {
     for (let user of leadAll) {
       const suffix = user.OnConfirmed?.[0]?.unpaidAmount > 0 ? 'PP' : 'FP';
 
-      const customId = `S2S290326${String(counter).padStart(2, '0')}${suffix}`;
+      const customId = `S2S290326MUM${String(counter).padStart(2, '0')}${suffix}`;
 
       counter++;
 
@@ -463,4 +463,175 @@ export const createIDCard = async (req, res) => {
 };
 
 
+// seminar excell data
+export const exportLeadsToExcel = async (req, res) => {
+  try {
+    const { status, source } = req.query;
 
+    const query = {};
+
+    if (source) {
+      query.source = {
+        $regex: `.*${escapeRegex(source)}.*`,
+        $options: 'i',
+      };
+    }
+
+    if (status) {
+      query['fields.status'] = status;
+    }
+
+    // ===== Fetch leads =====
+    const leads = await leadModel.find(query).sort({ createdAt: -1 });
+
+    // ===== Collect userIds =====
+    const userIds = new Set();
+
+    leads.forEach((lead) => {
+      (lead.OnConfirmed || []).forEach((oc) => {
+        if (oc.addedBy?.userId) {
+          userIds.add(oc.addedBy.userId.toString());
+        }
+      });
+    });
+
+    // ===== Fetch users =====
+    const users = await EmployeeModel.find({
+      _id: { $in: [...userIds] },
+    }).select('name');
+
+    const userMap = {};
+    users.forEach((user) => {
+      userMap[user._id.toString()] = user.name;
+    });
+
+    // ===== Attach names =====
+    leads.forEach((lead) => {
+      (lead.OnConfirmed || []).forEach((oc) => {
+        if (oc.addedBy?.userId) {
+          oc.addedBy.name = userMap[oc.addedBy.userId.toString()] || '';
+        }
+      });
+    });
+
+    // ===== Create workbook =====
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Leads');
+
+    // ===== Columns (NO OnConfirmed) =====
+    worksheet.columns = [
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Contact', key: 'contact', width: 20 },
+      { header: 'NGO Name', key: 'ngoName', width: 30 },
+      { header: 'City', key: 'city', width: 20 },
+      { header: 'State', key: 'state', width: 20 },
+      { header: 'Status', key: 'status', width: 20 },
+      { header: 'Source', key: 'source', width: 25 },
+
+      { header: 'Total Paid', key: 'totalPaid', width: 20 },
+      { header: 'Total Unpaid', key: 'totalUnpaid', width: 20 },
+    ];
+
+    // ===== Add rows =====
+    leads.forEach((lead) => {
+      const getField = (key) =>
+        lead.fields instanceof Map
+          ? lead.fields.get(key)
+          : lead.fields?.[key];
+
+      let totalPaid = 0;
+      let totalUnpaid = 0;
+
+      (lead.OnConfirmed || []).forEach((item) => {
+        totalPaid += Number(item.paidAmount || 0);
+        totalUnpaid += Number(item.unpaidAmount || 0);
+      });
+
+      const row = worksheet.addRow({
+        name: getField('Name') || '',
+        email: getField('Email') || '',
+        contact: getField('Contact') || '',
+        ngoName: getField('ngoName') || '',
+        city: getField('city') || '',
+        state: getField('state') || '',
+        status: getField('status') || '',
+        source: lead.source || '',
+
+        totalPaid,
+        totalUnpaid,
+      });
+
+      // ===== Optional coloring =====
+      row.getCell('totalPaid').font = { color: { argb: 'FF28A745' } };
+      row.getCell('totalUnpaid').font = { color: { argb: 'FFDC3545' } };
+    });
+
+    // ===== Response =====
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=leads.xlsx'
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error exporting Excel');
+  }
+};
+
+
+// seminar dataa for website
+
+export const seminarData = async (req, res) => {
+  try {
+    const { status, source, page = 1, limit = 50 } = req.query;
+
+    const query = {};
+
+    if (source) {
+      query.source = {
+        $regex: `.*${escapeRegex(source)}.*`,
+        $options: "i",
+      };
+    }
+
+    if (status) {
+      query["fields.status"] = status;
+    }
+
+    // Convert page & limit to integers
+    const pageNumber = Math.max(parseInt(page), 1);
+    const pageLimit = Math.max(parseInt(limit), 1);
+
+    // Total count (for pagination UI)
+    const totalCount = await leadModel.countDocuments(query);
+
+    // Fetch paginated leads
+    const leadAll = await leadModel
+      .find(query)
+      .select("fields OnConfirmed") // only these two
+      .sort({ createdAt: -1 })
+      .skip((pageNumber - 1) * pageLimit)
+      .limit(pageLimit);
+
+    res.json({
+      success: true,
+      data: leadAll,
+      pagination: {
+        totalCount,
+        page: pageNumber,
+        limit: pageLimit,
+        totalPages: Math.ceil(totalCount / pageLimit),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

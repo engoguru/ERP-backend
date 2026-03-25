@@ -346,9 +346,9 @@ export const leadView = async (req, res, next) => {
     const itemsPerPage = parseInt(req.query.itemsPerPage) || 100;
     const skip = (page - 1) * itemsPerPage;
 
-    const { search, status, date, assigned ,source} = req.query;
+    const { search, status, date, assigned, source } = req.query;
     const { id: employeeId, role, licenseId, roleID, permissionArray, department } = req.user;
-  //  console.log(source)
+    //  console.log(source)
     const query = { licenseId };
     const andConditions = [];
 
@@ -385,7 +385,7 @@ export const leadView = async (req, res, next) => {
     }
 
     if (department !== "Admin" && !permissionArray.includes("ldassign") && !permissionArray.includes("ldprocessor")
-    &&!/Manager/i.test(role.trim())) {
+      && !/Manager/i.test(role.trim())) {
       andConditions.push({ roleID });
     }
     // ---------------- SEARCH FILTER ----------------
@@ -437,20 +437,20 @@ export const leadView = async (req, res, next) => {
         createdAt: { $gte: start, $lte: end },
       });
     }
-// -------------------source filter---------------
-const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // -------------------source filter---------------
+    const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-if (source) {
-  andConditions.push({
-    source: { $regex: `.*${escapeRegex(source)}.*`, $options: "i" }
-  }); 
-}
+    if (source) {
+      andConditions.push({
+        source: { $regex: `.*${escapeRegex(source)}.*`, $options: "i" }
+      });
+    }
 
     // Combine all conditions into $and
     if (andConditions.length) {
       query.$and = andConditions;
     }
-// console.log(andConditions,"pp")
+    // console.log(andConditions,"pp")
     // ---------------- FETCH DATA ----------------
     const total = await leadModel.countDocuments(query);
     const leads = await leadModel
@@ -659,11 +659,12 @@ export const leadDelete = async (req, res, next) => {
 
 
 export const leadUpdate = async (req, res, next) => {
-  // console.log(req.body,"uiui")
+  // console.log(req.body, "uiui")
+ 
   try {
     const { id, } = req.params;
     // console.log(objId,"ll")
-    const { name:empName, id: empId } = req.user
+    const { name: empName, id: empId } = req.user
     if (!id) {
       return res.status(400).json({ success: false, message: "Lead ID is required" });
     }
@@ -759,7 +760,11 @@ export const leadUpdate = async (req, res, next) => {
       ...(statusRecord && Array.isArray(statusRecord) && statusRecord.length > 0
         ? { statusRecord: { $each: statusRecord } }
         : {}),
-      ...(OnConfirmed && Object.keys(OnConfirmed).length > 0
+      ...(OnConfirmed &&
+        typeof OnConfirmed === "object" &&
+        !Array.isArray(OnConfirmed) &&
+        Object.keys(OnConfirmed).length > 0 &&
+        (OnConfirmed.nameOfService || OnConfirmed.totalAmount) // at least one meaningful field
         ? { OnConfirmed: { $each: [OnConfirmed] } }
         : {}),
     };
