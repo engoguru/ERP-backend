@@ -219,3 +219,29 @@ export const eventTrigger = async (req, res, next) => {
         next(error);
     }
 };
+
+
+
+
+export const getActiveEvents = async (req, res) => {
+    try {
+        const today = new Date();
+
+        const events = await eventModel.find({
+            startDate: { $gt: today }
+        }).sort({ startDate: 1 }); // optional: earliest first
+
+        res.status(200).json(events);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// const today = new Date().toDateString();
+
+// const lastSeen = localStorage.getItem("eventPopupSeen");
+
+// if (lastSeen !== today) {
+//     setShowPopup(true);
+//     localStorage.setItem("eventPopupSeen", today);
+// }

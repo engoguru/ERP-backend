@@ -13,12 +13,7 @@ export const eventSchemaJoi = Joi.object({
 
     startDate: Joi.date().required(),
 
-    endDate: Joi.date()
-        .greater(Joi.ref("startDate"))
-        .required()
-        .messages({
-            "date.greater": "endDate must be after startDate"
-        }),
+    endDate: Joi.date().required(),
     totaldays: Joi.optional(),
 
     description: Joi.string().optional(),

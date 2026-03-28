@@ -1,5 +1,5 @@
 import express from "express";
-import { eventCreate, eventdelete, eventUpdate, eventView, eventViewAll, eventViewOne } from "../../controllers/employees/event.controller.js";
+import { eventCreate, eventdelete, eventUpdate, eventView, eventViewAll, eventViewOne, getActiveEvents } from "../../controllers/employees/event.controller.js";
 import { eventSchemaJoi } from "../../middlewares/employees/event.joivalidateer.js";
 
 const eventRoute=express.Router();
@@ -14,7 +14,7 @@ const validate = (req,res,next)  => {
     req.body.licenseId =req.user.licenseId;
     req.body.employeeId = req.user.id;
 
-    console.log("Middleware body:", req.body);
+    // console.log("Middleware body:", req.body);
 
     // Validate
     const { error } = eventSchemaJoi.validate(req.body, { abortEarly: false });
@@ -40,6 +40,8 @@ eventRoute.get("/view",authorization,eventView)
 eventRoute.get("/viewAll",eventViewAll)
 eventRoute.get("/viewOne/:id",eventViewOne)
 eventRoute.delete("/delete/:id",eventdelete)
+
+eventRoute.get("/upcoming",getActiveEvents)
 
 
 
