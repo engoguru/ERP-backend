@@ -1,6 +1,6 @@
 import express from "express";
 import { leadSchemaJoi } from "../middlewares/lead.joiValidater.js";
-import { bulkLeadAssign, leadCreate, leadCreateInside, leadDashboard, leadDelete, leadRecord,  leadUpdate, leadView, leadViewOne, metaLeadStore, verifyMeta } from "../controllers/lead.controller.js";
+import { bulkLeadAssign, leadCreate, leadCreateInside, leadDashboard, leadDelete, leadRecord,  leadUpdate, leadView, leadViewOne, metaLeadStore, updateConfirmedService, verifyMeta } from "../controllers/lead.controller.js";
 import { authorization } from "../utils/authorization.js";
 
 
@@ -46,7 +46,7 @@ const leadSchemaValidate = (req, res, next) => {
 
 
 const uploadFilesMiddleware = async (req, res, next) => {
-
+console.log(req.body,req.files)
     try {
 
         const files = req.files || {};
@@ -136,20 +136,79 @@ leadRoute.put(
 
 leadRoute.delete("/delete/:id", leadDelete)
 
-
+// dashbaaort daataa showing
 leadRoute.get("/dashboardData", authorization, leadDashboard)
 
 
-
+// for asssign leads
 leadRoute.post("/assign",authorization,bulkLeadAssign)
 
-
+// facebook
 leadRoute.get("/webhook/meta",verifyMeta)
 leadRoute.post("/webhook/meta",metaLeadStore)
-
+// facebook
 
 leadRoute.get("/report/:id",authorization,leadRecord)
 
+
+
+// Multer setup (memory storage for direct S3 upload)
+const upload = multer({ storage: multer.memoryStorage() });
+
+
+
+// Middleware to upload files to S3
+export const uploadFileService = async (req, res, next) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return next(); // no files to upload
+    }
+
+    const uploadedFiles = [];
+
+    // Loop through each uploaded file
+    for (const file of req.files) {
+      const key = `confirmed-services/${Date.now()}-${file.originalname}`; // generic folder
+
+      // Upload the file buffer directly to S3
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: "ngo-guru-bucket",
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        })
+      );
+
+      // Generate signed URL
+      const url = await generateUploadURL(key, file.mimetype);
+
+      uploadedFiles.push({
+        url,
+        public_id: key,
+      });
+    }
+
+    // Attach uploaded files to req.body.newFiles for controller
+    req.body.newFiles = uploadedFiles;
+
+    next();
+  } catch (err) {
+    console.error("File upload error:", err);
+    return res.status(500).json({
+      message: "Failed to upload files",
+      error: err.message,
+    });
+  }
+};
+
+// Route to update a confirmed service (paid/unpaid + files)
+leadRoute.put(
+  "/confirmed/:leadId/:serviceId",
+  upload.array("files"), // Multer parses multipart/form-data
+  uploadFileService,     // Upload to S3
+  updateConfirmedService // Update DB
+);
 
 
 

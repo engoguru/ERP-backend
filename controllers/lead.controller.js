@@ -1476,3 +1476,48 @@ export const bulkLeadAssign = async (req, res) => {
     });
   }
 };
+
+
+
+// service update api 
+
+
+export const updateConfirmedService = async (req, res) => {
+  const { leadId, serviceId } = req.params;
+  const { paidAmount, unpaidAmount, newFiles } = req.body;
+
+  try {
+    // Find the lead
+    const lead = await leadModel.findById(leadId);
+    if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    // Find the service
+    const serviceIndex = lead.OnConfirmed.findIndex(
+      (s) => s._id.toString() === serviceId
+    );
+    if (serviceIndex === -1)
+      return res.status(404).json({ message: "Service not found" });
+
+    const service = lead.OnConfirmed[serviceIndex];
+
+    // Update only changed fields
+    if (paidAmount !== undefined) service.paidAmount = paidAmount;
+    if (unpaidAmount !== undefined) service.unpaidAmount = unpaidAmount;
+
+    // Append new files
+    if (newFiles && newFiles.length) {
+      service.OnConfirmedFiles.push(...newFiles);
+    }
+
+    // Save lead
+    await lead.save();
+// console.log(lead,"pp")
+    res.status(200).json({
+      message: "Service updated successfully",
+      service,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};

@@ -557,6 +557,7 @@ export const generatePremiumCardOne = async (user, customId) => {
 };
 import ExcelJS from 'exceljs';
 import EmployeeModel from '../models/employees/employee.model.js';
+import { isValidObjectId } from 'mongoose';
 
 
 
@@ -1106,3 +1107,19 @@ export const seminarData = async (req, res) => {
     res.status(500).json({ success: false });
   }
 };
+
+
+// clear dues
+// export const clearDues = async (req, res) => {
+//   try {
+//     const {id}=req.params
+// if(!isValidObjectId(id)){
+//   return
+// }
+//   const data=await leadModel.findByIdAndUpdate({_id:id},{
+
+//   })
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
