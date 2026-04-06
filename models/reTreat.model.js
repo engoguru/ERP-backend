@@ -59,6 +59,16 @@ const reTreatSchema = new mongoose.Schema(
       required: [true, "Service is required"],
       trim: true,
     },
+
+    docs:[{
+      url:{
+        type:String
+      },
+      publicId:{
+        type:String
+      }
+    }],
+
     status: {
       type: String,
     },
@@ -89,11 +99,11 @@ const reTreatSchema = new mongoose.Schema(
   }
 );
 
-// Auto-calculate unpaidAmount before saving
-reTreatSchema.pre("save", function (next) {
-  this.unpaidAmount = this.totalAmount - this.paidAmount;
-  next();
-});
+// // Auto-calculate unpaidAmount before saving
+// reTreatSchema.pre("save", function (next) {
+//   this.unpaidAmount = this.totalAmount - this.paidAmount;
+//   next();
+// });
 
 const reTreatModel = mongoose.model("Retreat", reTreatSchema);
 

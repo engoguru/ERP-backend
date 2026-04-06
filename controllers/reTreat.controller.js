@@ -1,74 +1,114 @@
+
+import { generateUploadURL } from "../config/awsS3.js";
+import reTreatModel from "../models/reTreat.model.js";
+import  { isValidObjectId } from "mongoose";
 export const registerTreat = async (req, res) => {
- console.log("listen")
+  try {
+    const {
+      name,
+      email,
+      contact,
+      source,
+      paidAmount = 0,
+      totalAmount,
+      service,
+      docs,
+      leadId,
+      status = "Pending"
+    } = req.body;
 
-  // try {
-  //   const {
-  //     name,
-  //     email,
-  //     contact,
-  //     source,
-  //     paidAmount = 0,
-  //     totalAmount,
-  //     service,
-  //     status = "Pending"
-  //   } = req.body;
+    // // Attach uploaded files if any
+    // const docs = req.body.docs || [];
 
-  //   //  Validation
-  //   if (!name || !email || !contact || !source || !totalAmount || !service) {
-  //     return res.status(400).json({
-  //       success: false,
-  //       message: "All required fields must be provided"
-  //     });
-  //   }
+    // // Validation
+    if (!name || !email || !contact || !source || !totalAmount || !service) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided"
+      });
+    }
 
-  //   //  Check duplicate email/contact
-  //   const existing = await reTreatModel.findOne({
-  //     $or: [{ email }, { contact }]
-  //   });
+    // // Check duplicate email/contact
+    const existing = await reTreatModel.findOne({
+      $or: [{ email }, { contact }]
+    });
+// console.log(existing,"pp")
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email or contact already exists"
+      });
+    }
+    // console.log(req.body)
+    // // Create record
+    const newTreat = await reTreatModel.create({
+      name,
+      email,
+      contact,
+      source,
+      paidAmount,
+      totalAmount,
+      service,
+      status,
+      docs, // store uploaded docs URLs / IDs
+      leadId,
+      licenseId: req.user?.licenseId
+    });
+// console.log(newTreat)
+    return res.status(201).json({
+      success: true,
+      message: "Retreat registered successfully",
+      data: newTreat
+    });
 
-  //   if (existing) {
-  //     return res.status(409).json({
-  //       success: false,
-  //       message: "User with this email or contact already exists"
-  //     });
-  //   }
-
-  //   //  Create
-  //   const newTreat = await reTreatModel.create({
-  //     name,
-  //     email,
-  //     contact,
-  //     source,
-  //     paidAmount,
-  //     totalAmount,
-  //     service,
-  //     status,
-  //     employeeId: req.user?._id,
-  //     licenseId: req.user?.licenseId
-  //   });
-
-  //   return res.status(201).json({
-  //     success: true,
-  //     message: "Retreat registered successfully",
-  //     data: newTreat
-  //   });
-
-  // } catch (error) {
-  //   return res.status(500).json({
-  //     success: false,
-  //     message: error.message
-  //   });
-  // }
+  } catch (error) {
+    console.error("RegisterTreat error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
 };
 
 export const getAllTreats = async (req, res) => {
   try {
+    const { page, itemsPerPage, search, status, service } = req.query;
+
+    // if (!req.user?.licenseId) {
+    //   return res.status(401).json({ success: false, message: "Unauthorized" });
+    // }
+
+    // const query = { licenseId: req.user.licenseId };
+let query;
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } }, 
+        { email: { $regex: search, $options: "i" } },
+        { contact: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (status) query.status = status;
+    if (service) query.service = { $in: service};
+
+    const pageNum = parseInt(page) || 1;
+    const limit = parseInt(itemsPerPage) || 10;
+    const skip = (pageNum - 1) * limit;
+
     const data = await reTreatModel
-      .find()
-      .sort({ createdAt: -1 });
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await reTreatModel.countDocuments(query);
 
     res.status(200).json({
       success: true,
+      page: pageNum,
+      itemsPerPage: limit,
+      total,
       count: data.length,
       data
     });
@@ -79,35 +119,64 @@ export const getAllTreats = async (req, res) => {
 };
 
 
+
 export const getTreatById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const data = await reTreatModel.findById(id);
-
-    if (!data) {
-      return res.status(404).json({
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
         success: false,
-        message: "Retreat not found"
+        message: "Invalid ID format",
       });
     }
 
+    // Fetch retreat
+    const data = await reTreatModel.findById(id);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "Retreat not found",
+      });
+    }
+
+    // Generate signed URLs for docs
+    const docsWithUrls = await Promise.all(
+      (data.docs || []).map(async (doc) => {
+        const url=await generateUploadURL(doc.publicId)
+        return {
+          ...doc.toObject(),
+          url,
+        };
+      })
+    );
+
+    // Return response with updated docs
     res.status(200).json({
       success: true,
-      data
+      data: {
+        ...data.toObject(),
+        docs: docsWithUrls,
+      },
     });
-
   } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 
-
 export const updateTreat = async (req, res) => {
   try {
     const { id } = req.params;
-
+    if(!isValidObjectId(id)){
+      return res.status(400).json({
+        success: false,
+        message: "InValid!"
+      });
+    }
+console.log(req.body)
     const updated = await reTreatModel.findByIdAndUpdate(
       id,
       req.body,

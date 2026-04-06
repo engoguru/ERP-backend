@@ -101,18 +101,32 @@ export const leadCreateInside = async (req, res, next) => {
     const last10 = phone.replace(/\D/g, "").slice(-10);
 
     // Check for duplicate in the DB
-    const existingLead = await leadModel.findOne({
-      "fields.Contact": { $regex: `${last10}$` } // match last 10 digits
-    });
+    // const existingLead = await leadModel.findOne({
+    //   "fields.Contact": { $regex: `${last10}$` }
+    //    // match last 10 digits
+    // });
+   
+    // Make source dynamic (default to 'Portal' if not provided)
+    const source = req.body.source || "Portal";
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    const endOfYear = new Date(currentYear + 1, 0, 1);
 
+    const existingLead = await leadModel.findOne({
+      "fields.Contact": { $regex: `${last10}$` },
+      source: { $regex: `^${source}$`, $options: "i" },
+      createdAt: {
+        $gte: startOfYear,
+        $lt: endOfYear
+      }
+    });
     if (existingLead) {
       const error = new Error("Phone number already exists");
       error.statusCode = 400;
       return next(error);
     }
 
-    // Make source dynamic (default to 'Portal' if not provided)
-    const source = req.body.source || "Portal";
+
 
     // Save new lead
     const newLead = await leadModel.create({
@@ -660,7 +674,7 @@ export const leadDelete = async (req, res, next) => {
 
 export const leadUpdate = async (req, res, next) => {
   // console.log(req.body, "uiui")
- 
+
   try {
     const { id, } = req.params;
     // console.log(objId,"ll")
@@ -1511,7 +1525,7 @@ export const updateConfirmedService = async (req, res) => {
 
     // Save lead
     await lead.save();
-// console.log(lead,"pp")
+    // console.log(lead,"pp")
     res.status(200).json({
       message: "Service updated successfully",
       service,

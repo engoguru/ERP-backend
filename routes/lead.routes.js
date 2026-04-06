@@ -46,7 +46,7 @@ const leadSchemaValidate = (req, res, next) => {
 
 
 const uploadFilesMiddleware = async (req, res, next) => {
-console.log(req.body,req.files)
+// console.log(req.body,req.files)
     try {
 
         const files = req.files || {};

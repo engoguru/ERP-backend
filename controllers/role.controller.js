@@ -138,7 +138,7 @@ export const getRolePerDepartment2 = async (req, res) => {
   try {
     const { departmentId } = req.query;
 
-console.log(departmentId)
+// console.log(departmentId)
     // Find roles for this department
     const roles = await Role.find({ departmentId:departmentId });
 

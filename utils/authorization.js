@@ -8,7 +8,7 @@ export const authorization = async (req, res, next) => {
     // console.log("jjj")
     // Correct spelling + correct cookie name
     const token = req.cookies?.companyKey_keys;
-// console.log(token,"fhd")
+
     if (!token) {
       return res.status(401).json({
         success: false,
