@@ -66,6 +66,49 @@ reTreatRoute.get("/getAll",getAllTreats)
 
 reTreatRoute.get("/get/:id",getTreatById)
 
-reTreatRoute.put("/update/:id",updateTreat)
+
+
+// Middleware: uploadDocs2.js
+export const uploadDocs2 = async (req, res, next) => {
+  try {
+    if (req.files && req.files.docs && req.files.docs.length > 0) {
+      const uploadedFiles = [];
+
+      for (const file of req.files.docs) {
+        const key = `service/${Date.now()}-${file.originalname}`;
+        const params = {
+          Bucket: "ngo-guru-bucket",
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype
+        };
+
+        await s3.send(new PutObjectCommand(params));
+        const url = await generateUploadURL(key, file.mimetype);
+
+        uploadedFiles.push({ url, publicId: key });
+      }
+
+      // Attach uploaded files to body for controller
+      req.body.docs = uploadedFiles;
+    }
+
+    next();
+  } catch (error) {
+    console.error("UploadDocs2 Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "File upload failed",
+      error: error.message
+    });
+  }
+};
+// Route
+reTreatRoute.put(
+  "/update/:id",
+  upload.fields([{ name: "docs" }]),
+  uploadDocs2,
+  updateTreat
+);
 
 export default reTreatRoute  

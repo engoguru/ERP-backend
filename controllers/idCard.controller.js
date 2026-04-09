@@ -1087,7 +1087,7 @@ export const seminarData = async (req, res) => {
 
     const leadAll = await leadModel
       .find(query)
-      .select("fields OnConfirmed")
+      .select("fields OnConfirmed attendance")
       .sort({ createdAt: -1 })
       .skip((pageNumber - 1) * pageLimit)
       .limit(pageLimit);

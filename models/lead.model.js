@@ -1,4 +1,5 @@
 
+
 import mongoose from "mongoose";
 
 const OnConfirmedSchema = new mongoose.Schema({
@@ -118,7 +119,23 @@ const leadSchema = new mongoose.Schema({
       changedAt: { type: Date, default: Date.now }
     }
   ],
-  roleID: { type: mongoose.Schema.Types.ObjectId, ref: "Role", }
+  roleID: { type: mongoose.Schema.Types.ObjectId, ref: "Role", },
+
+  attendance:{
+    status:{
+      type: String,
+      enum: ["Present", "Absent", "Leave"], 
+    },
+    submittedBy:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee_Table",
+    },
+    submittedAt:{
+      type: Date,
+      default: Date.now,
+    }
+
+  }
 
 }, { timestamps: true });
 

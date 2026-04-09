@@ -166,29 +166,72 @@ export const getTreatById = async (req, res) => {
   }
 };
 
-
+// Controller: updateTreat.js
 export const updateTreat = async (req, res) => {
   try {
     const { id } = req.params;
-    if(!isValidObjectId(id)){
+
+    if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "InValid!"
+        message: "Invalid ID!"
       });
     }
-console.log(req.body)
-    const updated = await reTreatModel.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    );
 
-    if (!updated) {
+    // Fetch existing retreat once
+    const existing = await reTreatModel.findById(id);
+    if (!existing) {
       return res.status(404).json({
         success: false,
         message: "Retreat not found"
       });
     }
+
+    // Prepare updateData
+    const updateData = { ...req.body };
+
+    // -----------------------------
+    // Handle feedback append
+    // -----------------------------
+    if (req.body.feedback) {
+      try {
+        const newFeedback = JSON.parse(req.body.feedback);
+        updateData.feedback = [
+          ...(Array.isArray(existing.feedback) ? existing.feedback : []),
+          ...(Array.isArray(newFeedback) ? newFeedback : [newFeedback])
+        ];
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid feedback format"
+        });
+      }
+    }
+
+    // -----------------------------
+    // Handle docs append
+    // -----------------------------
+    if (req.files && req.files.docs && req.files.docs.length > 0) {
+      const newDocs = req.body.docs || []; // uploadDocs2 middleware should set req.body.docs
+      updateData.docs = [
+        ...(Array.isArray(existing.docs) ? existing.docs : []),
+        ...(Array.isArray(newDocs) ? newDocs : [newDocs])
+      ];
+    }
+
+    // Remove any invalid docs (string instead of object)
+    if (updateData.docs && typeof updateData.docs === "string") {
+      delete updateData.docs;
+    }
+
+    // -----------------------------
+    // Update in DB
+    // -----------------------------
+    const updated = await reTreatModel.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
 
     res.status(200).json({
       success: true,
@@ -197,11 +240,13 @@ console.log(req.body)
     });
 
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("UpdateTreat Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
-
-
 
 
 export const deleteTreat = async (req, res) => {

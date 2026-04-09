@@ -1,6 +1,6 @@
 import express from "express";
 import { leadSchemaJoi } from "../middlewares/lead.joiValidater.js";
-import { bulkLeadAssign, leadCreate, leadCreateInside, leadDashboard, leadDelete, leadRecord,  leadUpdate, leadView, leadViewOne, metaLeadStore, updateConfirmedService, verifyMeta } from "../controllers/lead.controller.js";
+import { bulkLeadAssign, leadAttendance, leadCreate, leadCreateInside, leadDashboard, leadDelete, leadRecord,  leadUpdate, leadView, leadViewOne, metaLeadStore, updateConfirmedService, verifyMeta } from "../controllers/lead.controller.js";
 import { authorization } from "../utils/authorization.js";
 
 
@@ -211,5 +211,9 @@ leadRoute.put(
 );
 
 
+
+
+
+leadRoute.put("/attendance/:id",authorization,leadAttendance)
 
 export default leadRoute;

@@ -6,7 +6,7 @@ import { generateUploadURL } from "../config/awsS3.js";
 import companyConfigureModel from "../models/companyConfigure.model.js";
 import EmployeeModel from "../models/employees/employee.model.js";
 import leadModel from "../models/lead.model.js";
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 
 
 
@@ -105,7 +105,7 @@ export const leadCreateInside = async (req, res, next) => {
     //   "fields.Contact": { $regex: `${last10}$` }
     //    // match last 10 digits
     // });
-   
+
     // Make source dynamic (default to 'Portal' if not provided)
     const source = req.body.source || "Portal";
     const currentYear = new Date().getFullYear();
@@ -1535,3 +1535,39 @@ export const updateConfirmedService = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+
+
+// mark the Attendace 
+
+export const leadAttendance = async (req, res) => {
+  try {
+
+    const { id } = req.params
+    const { status} = req.body
+    const userId = req.user?.id;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid lead ID" })
+    }
+    if(!status){
+      return res.status(400).json({ message: "Status is required" })
+    }
+    const leadData = await leadModel.findOne({ _id: id })
+    if (!leadData) return res.status(404).json({ message: "Lead not found" })
+    leadData.attendance.status = status
+    leadData.attendance.submittedBy = userId 
+    leadData.attendance.submittedAt = new Date()
+    await leadData.save()
+    return res.status(200).json({
+      success: true,
+      message: "Attendance updated successfully",
+      data: leadData
+    })
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+}
