@@ -87,7 +87,7 @@ export const getAllService = async (req, res) => {
     const services = await serviceModel.find({
       reTreat_Id: id,
       license_Id: licenseId,
-    });
+    }).sort({ createdAt: -1 });
 
     const updatedServices = await Promise.all(
       services.map(async (service) => {

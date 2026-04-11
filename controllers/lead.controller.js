@@ -1059,7 +1059,7 @@ export const leadDashboard = async (req, res) => {
       1
     );
 
-    const [totalleads, monthlyleads, roleWise] = await Promise.all([
+    const [totalleads, monthlyleads, roleWise,sourceWise] = await Promise.all([
       // Total Leads
       leadModel.countDocuments({ licenseId }),
 
@@ -1107,8 +1107,46 @@ export const leadDashboard = async (req, res) => {
           $sort: { leads: -1 },
         },
       ]),
-    ]);
 
+     leadModel.aggregate([
+  {
+    $group: {
+      _id: { $toLower: "$source" },
+      count: { $sum: 1 },
+      confirmed: {
+        $sum: {
+          $cond: [{ $eq: ["$fields.status", "Confirmed"] }, 1, 0]
+        }
+      }
+    }
+  },
+  {
+    $project: {
+      source: "$_id",
+      count: 1,
+      confirmed: 1,
+      conversionRate: {
+        $cond: [
+          { $gt: ["$count", 0] },
+          {
+            $multiply: [
+              { $divide: ["$confirmed", "$count"] },
+              100
+            ]
+          },
+          0
+        ]
+      }
+    }
+  },
+  {
+    $sort: {
+      count: -1
+    }
+  }
+])
+    ]);
+// console.log(sourceWise)
     // console.log(roleWise,totalleads,monthlyleads)
     return res.status(200).json({
       success: true,
@@ -1116,6 +1154,7 @@ export const leadDashboard = async (req, res) => {
         totalleads,
         monthlyleads,
         roleWise,
+        sourceWise
       },
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 import { json } from "express";
 import Role from "../models/role.model.js";
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import Department from "../models/department.model.js";
 
 // CREATE a new Role
@@ -140,6 +140,12 @@ export const getRolePerDepartment2 = async (req, res) => {
 
 // console.log(departmentId)
     // Find roles for this department
+    if(!isValidObjectId(departmentId)){
+        return res.status(400).json({
+            success:false,
+            message:"Invalid department ID"
+        })
+    }
     const roles = await Role.find({ departmentId:departmentId });
 
     res.status(200).json({

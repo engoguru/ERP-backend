@@ -1099,7 +1099,7 @@ export const seminarData = async (req, res) => {
         totalCount,
         page: pageNumber,
         limit: pageLimit,
-        totalPages: Math.ceil(totalCount / pageLimit),
+        totalPages: Math.ceil(totalCount / pageLimit), 
       },
     });
   } catch (error) {
