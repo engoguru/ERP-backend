@@ -29,10 +29,12 @@ export const registerTreat = async (req, res) => {
     }
 
     // // Check duplicate email/contact
-    const existing = await reTreatModel.findOne({
-      $or: [{ email }, { contact },{source}]
-    });
-// console.log(existing,"pp")
+  const existing = await reTreatModel.findOne({
+  email: email,
+  contact: contact,
+  source: source
+});
+// console.log(req.user,"pp")
     if (existing) {
       return res.status(409).json({
         success: false,
