@@ -30,7 +30,7 @@ export const registerTreat = async (req, res) => {
 
     // // Check duplicate email/contact
     const existing = await reTreatModel.findOne({
-      $or: [{ email }, { contact }]
+      $or: [{ email }, { contact },{source}]
     });
 // console.log(existing,"pp")
     if (existing) {
@@ -52,6 +52,7 @@ export const registerTreat = async (req, res) => {
       status,
       docs, // store uploaded docs URLs / IDs
       leadId,
+      createdBy_Id: req.user?.id,
       licenseId: req.user?.licenseId
     });
 // console.log(newTreat)

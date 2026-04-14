@@ -6,7 +6,7 @@ export const createService = async (req, res) => {
   try {
     const { id:treateId } = req.params;
     const { id, licenseId } = req.user;
-
+   
     const newService = await serviceModel.create({
       ...req.body,
       reTreat_Id: treateId,     // override anything from body

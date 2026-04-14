@@ -10,6 +10,10 @@ const reTreatSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "LicenseTable",
     },
+    createdBy_Id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee_Table"
+    },
     name: {
       type: String,
       required: [true, "Name is required"],
@@ -60,12 +64,12 @@ const reTreatSchema = new mongoose.Schema(
       trim: true,
     },
 
-    docs:[{
-      url:{
-        type:String
+    docs: [{
+      url: {
+        type: String
       },
-      publicId:{
-        type:String
+      publicId: {
+        type: String
       }
     }],
 
