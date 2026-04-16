@@ -11,6 +11,7 @@ export const registerTreat = async (req, res) => {
       source,
       paidAmount = 0,
       totalAmount,
+      unpaidAmount ,
       service,
       docs,
       leadId,
@@ -50,6 +51,7 @@ export const registerTreat = async (req, res) => {
       source,
       paidAmount,
       totalAmount,
+      unpaidAmount ,
       service,
       status,
       docs, // store uploaded docs URLs / IDs
@@ -76,24 +78,38 @@ export const registerTreat = async (req, res) => {
 
 export const getAllTreats = async (req, res) => {
   try {
-    const { page, itemsPerPage, search, status, service } = req.query;
+    const { page, itemsPerPage, search, status,seminar, service } = req.query;
 
     // if (!req.user?.licenseId) {
     //   return res.status(401).json({ success: false, message: "Unauthorized" });
     // }
-
+console.log(req.query)
     // const query = { licenseId: req.user.licenseId };
-let query;
+    const escapeRegex = (text) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+let query={};
     if (search) {
+       const safeSearch = escapeRegex(search.trim());
       query.$or = [
-        { name: { $regex: search, $options: "i" } }, 
-        { email: { $regex: search, $options: "i" } },
+        { name: { $regex: safeSearch, $options: "i" } }, 
+        { email: { $regex: safeSearch, $options: "i" } },
         { contact: { $regex: search, $options: "i" } }
       ];
     }
 
     if (status) query.status = status;
-    if (service) query.service = { $in: service};
+  if (seminar?.trim()) {
+  query.source = {
+    $regex: `^${seminar.trim()}$`,
+    $options: "i"
+  };
+}
+if (service?.trim()) {
+  query.service = {
+    $regex: `^${service.trim()}$`,
+    $options: "i"
+  };
+}
 
     const pageNum = parseInt(page) || 1;
     const limit = parseInt(itemsPerPage) || 10;
@@ -106,10 +122,10 @@ let query;
       .limit(limit);
 
     const total = await reTreatModel.countDocuments(query);
-
     res.status(200).json({
       success: true,
       page: pageNum,
+      totalPages: Math.ceil(total /limit),
       itemsPerPage: limit,
       total,
       count: data.length,

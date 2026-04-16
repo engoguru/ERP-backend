@@ -63,7 +63,7 @@ reTreatRoute.post(
 );
 
 
-reTreatRoute.get("/getAll",getAllTreats)
+reTreatRoute.get("/getAll",authorization,getAllTreats)
 
 reTreatRoute.get("/get/:id",getTreatById)
 
