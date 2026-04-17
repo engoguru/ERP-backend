@@ -107,7 +107,6 @@ export const uploadDocs2 = async (req, res, next) => {
 // Route
 reTreatRoute.put(
   "/update/:id",
-  authorization,
   upload.fields([{ name: "docs" }]),
   uploadDocs2,
   updateTreat
