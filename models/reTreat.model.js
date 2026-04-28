@@ -97,6 +97,20 @@ const reTreatSchema = new mongoose.Schema(
         },
       },
     ],
+    attendance: {
+      mark: {
+        type: String,
+        enum: ["Present", "Absent"],
+      },
+      date: {
+        type: Date,
+        default: Date.now()
+      },
+      markedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Employee_Table"
+      }
+    },
   },
   {
     timestamps: true,

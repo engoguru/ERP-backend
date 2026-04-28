@@ -1,7 +1,7 @@
 
 import { generateUploadURL } from "../config/awsS3.js";
 import reTreatModel from "../models/reTreat.model.js";
-import  { isValidObjectId } from "mongoose";
+import { isValidObjectId } from "mongoose";
 export const registerTreat = async (req, res) => {
   try {
     const {
@@ -11,7 +11,7 @@ export const registerTreat = async (req, res) => {
       source,
       paidAmount = 0,
       totalAmount,
-      unpaidAmount ,
+      unpaidAmount,
       service,
       docs,
       leadId,
@@ -30,12 +30,12 @@ export const registerTreat = async (req, res) => {
     }
 
     // // Check duplicate email/contact
-  const existing = await reTreatModel.findOne({
-  email: email,
-  contact: contact,
-  source: source
-});
-// console.log(req.user,"pp")
+    const existing = await reTreatModel.findOne({
+      email: email,
+      contact: contact,
+      source: source
+    });
+    // console.log(req.user,"pp")
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -51,7 +51,7 @@ export const registerTreat = async (req, res) => {
       source,
       paidAmount,
       totalAmount,
-      unpaidAmount ,
+      unpaidAmount,
       service,
       status,
       docs, // store uploaded docs URLs / IDs
@@ -59,7 +59,7 @@ export const registerTreat = async (req, res) => {
       createdBy_Id: req.user?.id,
       licenseId: req.user?.licenseId
     });
-// console.log(newTreat)
+    // console.log(newTreat)
     return res.status(201).json({
       success: true,
       message: "Retreat registered successfully",
@@ -78,38 +78,38 @@ export const registerTreat = async (req, res) => {
 
 export const getAllTreats = async (req, res) => {
   try {
-    const { page, itemsPerPage, search, status,seminar, service } = req.query;
+    const { page, itemsPerPage, search, status, seminar, service } = req.query;
 
     // if (!req.user?.licenseId) {
     //   return res.status(401).json({ success: false, message: "Unauthorized" });
     // }
-console.log(req.query)
     // const query = { licenseId: req.user.licenseId };
+    // console.log(page,itemsPerPage)
     const escapeRegex = (text) =>
-  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-let query={};
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    let query = {};
     if (search) {
-       const safeSearch = escapeRegex(search.trim());
+      const safeSearch = escapeRegex(search.trim());
       query.$or = [
-        { name: { $regex: safeSearch, $options: "i" } }, 
+        { name: { $regex: safeSearch, $options: "i" } },
         { email: { $regex: safeSearch, $options: "i" } },
         { contact: { $regex: search, $options: "i" } }
       ];
     }
 
     if (status) query.status = status;
-  if (seminar?.trim()) {
-  query.source = {
-    $regex: `^${seminar.trim()}$`,
-    $options: "i"
-  };
-}
-if (service?.trim()) {
-  query.service = {
-    $regex: `^${service.trim()}$`,
-    $options: "i"
-  };
-}
+    if (seminar?.trim()) {
+      query.source = {
+        $regex: `^${seminar.trim()}$`,
+        $options: "i"
+      };
+    }
+    if (service?.trim()) {
+      query.service = {
+        $regex: `^${service.trim()}$`,
+        $options: "i"
+      };
+    }
 
     const pageNum = parseInt(page) || 1;
     const limit = parseInt(itemsPerPage) || 10;
@@ -125,7 +125,7 @@ if (service?.trim()) {
     res.status(200).json({
       success: true,
       page: pageNum,
-      totalPages: Math.ceil(total /limit),
+      totalPages: Math.ceil(total / limit),
       itemsPerPage: limit,
       total,
       count: data.length,
@@ -163,7 +163,7 @@ export const getTreatById = async (req, res) => {
     // Generate signed URLs for docs
     const docsWithUrls = await Promise.all(
       (data.docs || []).map(async (doc) => {
-        const url=await generateUploadURL(doc.publicId)
+        const url = await generateUploadURL(doc.publicId)
         return {
           ...doc.toObject(),
           url,
@@ -205,10 +205,17 @@ export const updateTreat = async (req, res) => {
         message: "Retreat not found"
       });
     }
+    if (req.body.attendance) {
+      if (typeof req.body.attendance === "string") {
+        req.body.attendance = JSON.parse(req.body.attendance);
+      }
 
+      req.body.attendance.markedBy = req.user.id;
+      req.body.attendance.date = new Date(); // or Date.now()
+    }
     // Prepare updateData
     const updateData = { ...req.body };
-
+    // console.log(updateData,"l;")
     // -----------------------------
     // Handle feedback append
     // -----------------------------

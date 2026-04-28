@@ -31,6 +31,8 @@ import departmentRoute from "./routes/department.routes.js";
 import idRouter from "./routes/idCard.routes.js";
 import reTreatRoute from "./routes/reTreat.routes.js";
 import serviceAddRoute from "./routes/serviceAdd.routes.js";
+import sncregisterRouter from "./routes/snc/sncregister.routes.js";
+import sncServiceRouter from "./routes/snc/sncservice.routes.js";
 
 dotenv.config();
 
@@ -106,6 +108,10 @@ app.use("/api/id",idRouter)
 app.use("/api/treat",reTreatRoute)
 
 app.use("/api/service",serviceAddRoute)
+
+app.use("/api/sncregister",sncregisterRouter)
+
+app.use("/api/sncService",sncServiceRouter)
 // ────────── ERROR HANDLER ──────────
 app.use(errorHandler);
 
