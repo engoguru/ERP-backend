@@ -36,9 +36,6 @@ const uploadDocs = async(req, res, next) => {
 }
 
 
-
-
-
 sncServiceRouter.post(
   "/create/:id",
   authorization,

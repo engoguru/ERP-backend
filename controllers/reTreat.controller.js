@@ -4,6 +4,7 @@ import reTreatModel from "../models/reTreat.model.js";
 import { isValidObjectId } from "mongoose";
 export const registerTreat = async (req, res) => {
   try {
+    // console.log(req.body, "oiij")
     const {
       name,
       email,
@@ -44,7 +45,8 @@ export const registerTreat = async (req, res) => {
     }
     // console.log(req.body)
     // // Create record
-    const newTreat = await reTreatModel.create({
+
+    const payload = {
       name,
       email,
       contact,
@@ -55,10 +57,16 @@ export const registerTreat = async (req, res) => {
       service,
       status,
       docs, // store uploaded docs URLs / IDs
-      leadId,
       createdBy_Id: req.user?.id,
-      licenseId: req.user?.licenseId
-    });
+      licenseId: req.user?.licenseId,
+    };
+
+    // only add leadId if it exists
+    if (leadId && leadId.trim() !== "") {
+      payload.leadId = leadId;
+    }
+
+    const newTreat = await reTreatModel.create(payload);
     // console.log(newTreat)
     return res.status(201).json({
       success: true,

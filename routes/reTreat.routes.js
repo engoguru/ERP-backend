@@ -8,7 +8,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 // Multer setup (memory storage for direct S3 upload)
 const upload = multer({ storage: multer.memoryStorage() });
 const uploadDocs = async (req, res,next) => {
-//   console.log(req.files)
+
     try {
 
         if (!req.files) {

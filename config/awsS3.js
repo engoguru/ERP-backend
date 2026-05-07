@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { S3Client, PutObjectCommand , GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-console.log( process.env.AWS_ACCESS_KEY_ID)
+// console.log( process.env.AWS_ACCESS_KEY_ID)
 export const s3 = new S3Client({
   region: "ap-south-1",
   credentials: {

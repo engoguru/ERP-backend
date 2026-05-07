@@ -216,4 +216,41 @@ leadRoute.put(
 
 leadRoute.put("/attendance/:id",authorization,leadAttendance)
 
+
+import ExcelJS from "exceljs"
+leadRoute.get("/excelData",async(req,res)=>{
+  try {
+      const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Data');
+
+  // Add columns
+  worksheet.columns = [
+    { header: 'Name', key: 'name' },
+    { header: 'Email', key: 'email' },
+    { header: 'Email', key: 'email' },
+    { header: 'Email', key: 'email' }
+  ];
+
+  // Add rows (replace with DB data)
+  worksheet.addRow({ name: 'John', age: 25 });
+  worksheet.addRow({ name: 'Jane', age: 30 });
+
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader(
+    'Content-Disposition',
+    'attachment; filename=data.xlsx'
+  );
+
+  await workbook.xlsx.write(res);
+  res.end();
+  } catch (error) {
+    console.log(error)
+  }
+})
+
+
+
 export default leadRoute;
