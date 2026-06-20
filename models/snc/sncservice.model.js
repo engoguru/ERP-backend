@@ -12,8 +12,28 @@ const sncServiceSchema = new mongoose.Schema({
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'employee_table'
+        ref:"Employee_Table"
     },
+    assigned: [
+        {
+            userId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref:"Employee_Table",
+                required: true
+            },
+            userName: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            status: {
+                type: String,
+                enum: ["Active", "Inactive"],
+                default: "Active"
+            }
+        }
+    ],
+
     serviceName: {
         type: String,
         required: true,
@@ -27,12 +47,14 @@ const sncServiceSchema = new mongoose.Schema({
     paidAmount: {
         type: Number,
         required: true,
-        trim: true
+        trim: true,
+        default:0
     },
     unpaidAmount: {
         type: Number,
-        required: true,
-        trim: true
+        // required: true,
+        trim: true,
+        default:0
     },
 
     gstAmount: {

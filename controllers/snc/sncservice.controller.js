@@ -165,7 +165,9 @@ export const sncServiceOneUpdate = async (req, res) => {
         message: "Invalid SNC Service ID"
       });
     }
-
+if (req.body.assigned) {
+  req.body.assigned = JSON.parse(req.body.assigned);
+}
     const {
       serviceName,
       totalAmount,
@@ -175,7 +177,8 @@ export const sncServiceOneUpdate = async (req, res) => {
       otherExpanses,
       status,
       docs,
-      allowedby
+      allowedby,
+      assigned
     } = req.body;
 
     const data = await sncServiceModel.findById(id);
@@ -195,7 +198,8 @@ export const sncServiceOneUpdate = async (req, res) => {
       gstAmount,
       otherExpanses,
       status,
-      allowedby
+      allowedby,
+      assigned
     };
 
     Object.keys(updateFields).forEach((key) => {
@@ -218,6 +222,48 @@ export const sncServiceOneUpdate = async (req, res) => {
 
   } catch (error) {
     console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+};
+
+
+
+// here we view all services by checking id isniode the assigned
+
+
+export const viewAllservices = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID"
+      });
+    }
+
+    const services = await sncServiceModel.find({
+      assigned: {
+        $elemMatch: {
+          userId: id,
+          status: "Active"
+        }
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Services fetched successfully",
+      count: services.length,
+      data: services
+    });
+
+  } catch (error) {
+    console.log(error);
+
     return res.status(500).json({
       success: false,
       message: "Internal Server Error"

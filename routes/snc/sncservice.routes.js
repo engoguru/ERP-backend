@@ -1,7 +1,7 @@
 import express from "express"
 const sncServiceRouter = express.Router()
 import { authorization } from "../../utils/authorization.js"
-import { sncServiceCreate, sncServiceOneUpdate, sncServiceViewAllByUser, sncServiceViewOne, sncUserDetail } from "../../controllers/snc/sncservice.controller.js"
+import { sncServiceCreate, sncServiceOneUpdate, sncServiceViewAllByUser, sncServiceViewOne, sncUserDetail, viewAllservices } from "../../controllers/snc/sncservice.controller.js"
 import multer from "multer"
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { generateUploadURL, s3 } from "../../config/awsS3.js"
@@ -53,5 +53,9 @@ sncServiceRouter.get("/viewOne/:id",authorization,sncServiceViewOne)
 sncServiceRouter.put("/updateService/:id",  authorization,  upload.fields([{ name: "docs", maxCount: 10 }]), 
   uploadDocs,
  sncServiceOneUpdate)
+
+
+//  view assigned data services
+sncServiceRouter.get("/services/assigned/:id", authorization,viewAllservices)
 
 export default sncServiceRouter
