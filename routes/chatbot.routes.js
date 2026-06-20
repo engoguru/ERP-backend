@@ -1,5 +1,5 @@
 import express from "express";
-import { chatbot, ingestKnowledgeBase } from "../controllers/chat.controller.js";
+import { chatbot } from "../controllers/chat.controller.js";
 
 const chatRoute=express.Router()
 
