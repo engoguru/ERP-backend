@@ -59,19 +59,38 @@ const allowedOrigins = [
   "https://www.ngoguru.info"   // www production domain
 ];
 
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     // allow requests with no origin (like Postman)
+//     if (!origin) return callback(null, true);
+
+//     if (allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   credentials: true
+// }));
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like Postman)
+    // allow Postman / server-to-server
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+      return callback(null, true);
     }
+
+    console.log("Blocked CORS origin:", origin);
+
+    // ❗ IMPORTANT: return false instead of error
+    return callback(null, false);
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+app.options("*", cors());
 
 app.use(cookieParser());
 app.use(express.json()); // parses JSON bodies
