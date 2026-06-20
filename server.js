@@ -74,7 +74,6 @@ const allowedOrigins = [
 // }));
 app.use(cors({
   origin: function (origin, callback) {
-    // allow Postman / server-to-server
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
@@ -82,15 +81,12 @@ app.use(cors({
     }
 
     console.log("Blocked CORS origin:", origin);
-
-    // ❗ IMPORTANT: return false instead of error
     return callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.options("*", cors());
 
 app.use(cookieParser());
 app.use(express.json()); // parses JSON bodies
