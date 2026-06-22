@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const sncServiceSchema = new mongoose.Schema({
     sncId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "sncRegister"
+        ref: "snc"
     },
     licenseId: {
         type: mongoose.Schema.Types.ObjectId,

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 const sncSchema=new mongoose.Schema({
 retreat_id:{
     type:mongoose.Schema.Types.ObjectId,
-    ref:"reTreat",
+    ref:"Retreat",
 },
 createdBy:{
     type:mongoose.Schema.Types.ObjectId,

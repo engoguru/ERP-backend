@@ -5,107 +5,107 @@ import sncServiceModel from "../../models/snc/sncservice.model.js";
 import { generateUploadURL } from "../../config/awsS3.js";
 
 export const sncServiceCreate = async (req, res) => {
-    try {
-        const { id: reTreat } = req.params;
-        const { id, licenseId } = req.user
-        // console.log(req.body,"opo")
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid reTreat ID"
-            })
-        }
-        const sncId = await sncModel.findOne({ retreat_id: reTreat }).select(" _id")
-        if (sncId) {
-            req.body.sncId = sncId._id
-        }
-        if (req.user) {
-            req.body.createdBy = id;
-            req.body.licenseId = licenseId;
-        }
-        // sncServiceModel
-        const data = await sncServiceModel.create(req.body)
-        return res.status(201).json({
-            success: true,
-            message: "SNC service created successfully",
-            data
-        })
-    } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            success: false,
-            message: "Internal Server Error"
-        })
+  try {
+    const { id: reTreat } = req.params;
+    const { id, licenseId } = req.user
+    // console.log(req.body,"opo")
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reTreat ID"
+      })
     }
+    const sncId = await sncModel.findOne({ retreat_id: reTreat }).select(" _id")
+    if (sncId) {
+      req.body.sncId = sncId._id
+    }
+    if (req.user) {
+      req.body.createdBy = id;
+      req.body.licenseId = licenseId;
+    }
+    // sncServiceModel
+    const data = await sncServiceModel.create(req.body)
+    return res.status(201).json({
+      success: true,
+      message: "SNC service created successfully",
+      data
+    })
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    })
+  }
 }
 
 // user detail for snc
 
 export const sncUserDetail = async (req, res) => {
-    try {
+  try {
 
-        const { id } = req.params;
+    const { id } = req.params;
 
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid SNC ID"
-            })
-        }
-        const data = await reTreatModel.findById(id);
-        if (!data) {
-            return res.status(404).json({
-                success: false,
-                message: "No reTreat data found for the given SNC ID"
-            })
-        }
-        return res.status(200).json({
-            success: true,
-            message: "SNC user details fetched successfully",
-            data
-        })
-
-
-    } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            success: false,
-            message: "Internal Server Error"
-        })
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid SNC ID"
+      })
     }
+    const data = await reTreatModel.findById(id);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "No reTreat data found for the given SNC ID"
+      })
+    }
+    return res.status(200).json({
+      success: true,
+      message: "SNC user details fetched successfully",
+      data
+    })
+
+
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    })
+  }
 }
 
 export const sncServiceViewAllByUser = async (req, res) => {
-    try {
-        const { id } = req.params
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid SNC ID"
-            })
-        }
-        const page = req.query.pag || 1
-        const limit = req.query.limit || 100
-        const skip = (page - 1) * limit
-        const data = await sncServiceModel.find({ sncId: id }).skip(skip).limit(limit).sort({ createdAt: -1 })
-        if (!data) {
-            return res.status(400).json({
-                success: false,
-                message: "No SNC Service data found for the given SNC ID"
-
-            })
-        }
-        return res.status(200).json({
-            success: true,
-            message: "Data Found",
-            data: data
-        })
-    } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            message: ""
-        })
+  try {
+    const { id } = req.params
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid SNC ID"
+      })
     }
+    const page = req.query.pag || 1
+    const limit = req.query.limit || 100
+    const skip = (page - 1) * limit
+    const data = await sncServiceModel.find({ sncId: id }).skip(skip).limit(limit).sort({ createdAt: -1 })
+    if (!data) {
+      return res.status(400).json({
+        success: false,
+        message: "No SNC Service data found for the given SNC ID"
+
+      })
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Data Found",
+      data: data
+    })
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      message: ""
+    })
+  }
 }
 
 export const sncServiceViewOne = async (req, res) => {
@@ -128,18 +128,18 @@ export const sncServiceViewOne = async (req, res) => {
       });
     }
 
-        // Ensure docs exists and is iterable
-        if (Array.isArray(data.docs)) {
-          data.docs = await Promise.all(
-            data.docs.map(async (pic) => {
-              const url = await generateUploadURL(pic.public_id);
-              return {
-                ...pic.toObject?.() || pic,
-                url
-              };
-            })
-          );
-        }
+    // Ensure docs exists and is iterable
+    if (Array.isArray(data.docs)) {
+      data.docs = await Promise.all(
+        data.docs.map(async (pic) => {
+          const url = await generateUploadURL(pic.public_id);
+          return {
+            ...pic.toObject?.() || pic,
+            url
+          };
+        })
+      );
+    }
     return res.status(200).json({
       success: true,
       message: "SNC Service details fetched successfully",
@@ -165,9 +165,9 @@ export const sncServiceOneUpdate = async (req, res) => {
         message: "Invalid SNC Service ID"
       });
     }
-if (req.body.assigned) {
-  req.body.assigned = JSON.parse(req.body.assigned);
-}
+    if (req.body.assigned) {
+      req.body.assigned = JSON.parse(req.body.assigned);
+    }
     const {
       serviceName,
       totalAmount,
@@ -237,36 +237,61 @@ if (req.body.assigned) {
 export const viewAllservices = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role } = req.user;
 
-    if (!isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid User ID"
+    // Admin: fetch all active services
+    if (role === "Admin") {
+      const services = await sncServiceModel.find({
+        assigned: {
+          $elemMatch: {
+            status: "Active",
+          },
+        },
+      }).populate({
+        path: "sncId",
+        populate: {
+          path: "retreat_id",
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Services fetched successfully",
+        count: services.length,
+        data: services,
       });
     }
 
+    // Validate user ID for non-admin users
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID",
+      });
+    }
+
+    // Fetch services assigned to the user
     const services = await sncServiceModel.find({
       assigned: {
         $elemMatch: {
           userId: id,
-          status: "Active"
-        }
-      }
-    });
+          status: "Active",
+        },
+      },
+    }).select();
 
     return res.status(200).json({
       success: true,
       message: "Services fetched successfully",
       count: services.length,
-      data: services
+      data: services,
     });
-
   } catch (error) {
     console.log(error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
