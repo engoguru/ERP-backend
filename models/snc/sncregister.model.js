@@ -18,6 +18,12 @@ joinStatus:{
     required:true,
     trim:true
 },
+sncEdition:{
+    type:String,
+    required:true,
+    trim:true
+
+},
 sncType:{
     type:String,
     enum:["A","B","C"],
@@ -37,7 +43,7 @@ paidAmount:{
 unpaidAmount:{
     type:Number,
     required:true,
-    trim:true
+    trim:true,
 },
 gstAmount:{
     type:Number,

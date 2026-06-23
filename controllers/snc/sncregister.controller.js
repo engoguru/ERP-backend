@@ -39,9 +39,10 @@ export const allSncEligible = async (req, res) => {
 };
 export const sncRegister = async (req, res) => {
   try {
-    const {
+    let{
       retreat_id,
       joinStatus,
+      sncEdition,
       sncType,
       totalServiceAmount,
       paidAmount,
@@ -51,7 +52,7 @@ export const sncRegister = async (req, res) => {
     } = req.body;
 
     // Basic validation
-    if (!retreat_id || !joinStatus || !sncType || totalServiceAmount == null || paidAmount == null || unpaidAmount == null || gstAmount == null) {
+    if (!retreat_id || !joinStatus || !sncType || !sncEdition|| totalServiceAmount == null || paidAmount == null || unpaidAmount == null || gstAmount == null) {
       return res.status(400).json({
         success: false,
         message: "All required fields must be provided"
@@ -72,6 +73,7 @@ export const sncRegister = async (req, res) => {
         message: "Invalid memberType value"
       });
     }
+    unpaidAmount=totalServiceAmount - paidAmount;
     // sncModel
     // Create new record
     const newSnc = await sncModel.create({
@@ -79,6 +81,7 @@ export const sncRegister = async (req, res) => {
       createdBy: req.user?._id, // assuming auth middleware
       licenseId: req.user?.licenseId, // optional if available
       joinStatus,
+      sncEdition,
       sncType,
       totalServiceAmount,
       paidAmount,
