@@ -85,6 +85,6 @@ const sncServiceSchema = new mongoose.Schema({
         type: String
     }
 
-})
+},{timestamps:true})
 const sncServiceModel = mongoose.model("sncService", sncServiceSchema)
 export default sncServiceModel

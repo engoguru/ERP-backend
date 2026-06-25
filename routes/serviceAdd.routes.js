@@ -1,5 +1,5 @@
 import express from "express";
-import { createService, getAllService, getOneService, updateService } from "../controllers/serviceAdd.controller.js";
+import { createService, getAllService, getOneService, updateService, viewAllservicesAssigned } from "../controllers/serviceAdd.controller.js";
 const serviceAddRoute = express.Router()
 import multer from "multer";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -57,6 +57,9 @@ serviceAddRoute.get("/getOne/:id", authorization, getOneService)
 serviceAddRoute.get("/getAll/:id", authorization, getAllService)
 
 serviceAddRoute.put("/update/:id",authorization, upload.fields([{ name: "docs" }]), uploadDocs,updateService)
+
+
+serviceAddRoute.get("/services/assigned",authorization,viewAllservicesAssigned)
 
 
 export default serviceAddRoute; 

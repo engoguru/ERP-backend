@@ -1,7 +1,7 @@
 import { generateUploadURL } from "../config/awsS3.js";
 import serviceModel from "../models/serviceAdd.model.js";
 
-
+import { isValidObjectId } from "mongoose";
 export const createService = async (req, res) => {
   try {
     const { id:treateId } = req.params;
@@ -35,7 +35,10 @@ export const createService = async (req, res) => {
 
 export const updateService = async (req, res) => {
     try {
-        const { id } = req.params;          // get the service ID from the URL
+        const { id } = req.params; 
+          if (req.body.assigned) {
+      req.body.assigned = JSON.parse(req.body.assigned);
+    }         // get the service ID from the URL
         const updateData = { ...req.body }; // clone req.body to manipulate
 
         // Check if docs is present in request body
@@ -83,6 +86,7 @@ export const getAllService = async (req, res) => {
   try {
     const { id } = req.params;
     const { licenseId } = req.user;
+   
 
     const services = await serviceModel.find({
       reTreat_Id: id,
@@ -164,6 +168,71 @@ export const getOneService = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
+    });
+  }
+};
+
+
+// get all service per client according to assigned to excutive and according to client ..   and if admin show all
+export const viewAllservicesAssigned = async (req, res) => {
+  try {
+    // const { id } = req.params;
+    const { role ,id} = req.user;
+
+    // Admin: fetch all active services
+    if (role === "Admin") {
+      const services = await serviceModel.find({
+        assigned: {
+          $elemMatch: {
+            status: "Active",
+          },
+        },
+      }).populate({
+        path: "reTreat_Id",
+        
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Services fetched successfully",
+        count: services.length,
+        data: services,
+      });
+    }
+
+    // Validate user ID for non-admin users
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID",
+      });
+    }
+
+    // Fetch services assigned to the user
+    const services = await serviceModel.find({
+      assigned: {
+        $elemMatch: {
+          userId: id,
+          status: "Active",
+        },
+      },
+    }).populate({
+        path: "reTreat_Id",
+        
+      });
+// console.log(services,"tgjjser")
+    return res.status(200).json({
+      success: true,
+      message: "Services fetched successfully",
+      count: services.length,
+      data: services,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
     });
   }
 };
