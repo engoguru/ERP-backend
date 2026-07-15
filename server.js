@@ -35,6 +35,7 @@ import sncregisterRouter from "./routes/snc/sncregister.routes.js";
 import sncServiceRouter from "./routes/snc/sncservice.routes.js";
 import proposalRoutes from "./routes/snc/sncproposal.routes.js";
 import paymentRoute from "./routes/snc/sncpayment.routes.js";
+import routerData from "./routes/dataentry.routes.js";
 
 dotenv.config();
 
@@ -133,6 +134,9 @@ app.use("/api/sncService",sncServiceRouter)
 app.use("/api/sncProposal",proposalRoutes)
 
 app.use("/api/payment",paymentRoute)
+
+
+app.use("/api/data",routerData)
 // ────────── ERROR HANDLER ──────────
 app.use(errorHandler);
 

@@ -14,7 +14,9 @@
   "description": "",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.966.0",
+    "@aws-sdk/client-textract": "^3.1085.0",
     "@aws-sdk/s3-request-presigner": "^3.966.0",
+    "@google/genai": "^2.11.0",
     "@google/generative-ai": "^0.24.1",
     "@langchain/textsplitters": "^1.0.1",
     "@pinecone-database/pinecone": "^7.2.0",
@@ -41,6 +43,7 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.12",
     "pdf-lib": "^1.17.1",
+    "tesseract.js": "^7.0.0",
     "validator": "^13.15.26",
     "wink-bm25-text-search": "^3.1.2",
     "wink-nlp-utils": "^2.1.0"

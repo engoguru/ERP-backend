@@ -96,9 +96,9 @@ export const leadCreateInside = async (req, res, next) => {
       error.statusCode = 400;
       return next(error);
     }
-
+// console.log(phone , req.body)
     // Take last 10 digits only
-    const last10 = phone.replace(/\D/g, "").slice(-10);
+ const last10 = phone.toString().replace(/\D/g, "").slice(-10);
 
     // Check for duplicate in the DB
     // const existingLead = await leadModel.findOne({
