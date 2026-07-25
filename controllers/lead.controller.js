@@ -81,6 +81,68 @@ import mongoose, { isValidObjectId } from "mongoose";
 //     return next(error);
 //   }
 // };
+// export const leadCreateInside = async (req, res, next) => {
+//   try {
+//     if (!req.body || Object.keys(req.body).length === 0) {
+//       const error = new Error("Request body cannot be empty");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+//     // Extract phone number from request body
+//     const phone = req.body.Contact;
+//     if (!phone) { 
+//       const error = new Error("Phone number is required");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+// // console.log(phone , req.body)
+//     // Take last 10 digits only
+//  const last10 = phone.toString().replace(/\D/g, "").slice(-10);
+
+//     // Check for duplicate in the DB
+//     // const existingLead = await leadModel.findOne({
+//     //   "fields.Contact": { $regex: `${last10}$` }
+//     //    // match last 10 digits
+//     // });
+
+//     // Make source dynamic (default to 'Portal' if not provided)
+//     const source = req.body.source || "Portal";
+//     const currentYear = new Date().getFullYear();
+//     const startOfYear = new Date(currentYear, 0, 1);
+//     const endOfYear = new Date(currentYear + 1, 0, 1);
+
+//     const existingLead = await leadModel.findOne({
+//       "fields.Contact": { $regex: `${last10}$` },
+//       source: { $regex: `^${source}$`, $options: "i" },
+//       createdAt: {
+//         $gte: startOfYear,
+//         $lt: endOfYear
+//       }
+//     });
+//     if (existingLead) {
+//       const error = new Error("Phone number already exists");
+//       error.statusCode = 400;
+//       return next(error);
+//     }
+
+
+
+//     // Save new lead
+//     // const newLead = await leadModel.create({
+//     //   licenseId: req.user.licenseId,
+//     //   fields: req.body,
+//     //   source: source
+//     // });
+
+//     return res.status(201).json({
+//       success: true,
+//       // data: newLead
+//     });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 export const leadCreateInside = async (req, res, next) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -89,49 +151,53 @@ export const leadCreateInside = async (req, res, next) => {
       return next(error);
     }
 
-    // Extract phone number from request body
-    const phone = req.body.Contact;
-    if (!phone) {
+    // 1. Clean and normalize the phone number immediately
+    let phone = req.body.Contact;
+    if (!phone) { 
       const error = new Error("Phone number is required");
       error.statusCode = 400;
       return next(error);
     }
-// console.log(phone , req.body)
-    // Take last 10 digits only
- const last10 = phone.toString().replace(/\D/g, "").slice(-10);
 
-    // Check for duplicate in the DB
-    // const existingLead = await leadModel.findOne({
-    //   "fields.Contact": { $regex: `${last10}$` }
-    //    // match last 10 digits
-    // });
+    // Strip everything except digits and force last 10 digits
+    // Also trim any potential whitespace from the input string
+    const last10 = phone.toString().trim().replace(/\D/g, "").slice(-10);
+    
+    if (last10.length < 10) {
+      const error = new Error("Invalid phone number. Must have at least 10 digits.");
+      error.statusCode = 400;
+      return next(error);
+    }
 
-    // Make source dynamic (default to 'Portal' if not provided)
+    // Update req.body so the CLEANED 10-digit number is what actually gets saved
+    req.body.Contact = last10;
+
+    // 2. Dynamic Source & Date Boundaries
     const source = req.body.source || "Portal";
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
     const endOfYear = new Date(currentYear + 1, 0, 1);
 
+    // 3. Exact Matching Check (Faster and safer than regex)
     const existingLead = await leadModel.findOne({
-      "fields.Contact": { $regex: `${last10}$` },
+      "fields.Contact": last10, // Matching the exact cleaned string now
       source: { $regex: `^${source}$`, $options: "i" },
       createdAt: {
         $gte: startOfYear,
         $lt: endOfYear
       }
     });
+
     if (existingLead) {
-      const error = new Error("Phone number already exists");
+      const error = new Error("Phone number already exists for this source this year");
       error.statusCode = 400;
       return next(error);
     }
 
-
-
-    // Save new lead
+    // 4. Save new lead (Cleaned req.body is utilized here)
     const newLead = await leadModel.create({
-      licenseId: req.user.licenseId,
-      fields: req.body,
+      licenseId: req.user?.licenseId,
+      fields: req.body, // Contains the normalized 10-digit Contact field now
       source: source
     });
 
