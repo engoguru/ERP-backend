@@ -207,7 +207,6 @@ export const viewAllservicesAssigned = async (req, res) => {
         message: "Invalid User ID",
       });
     }
-
     // Fetch services assigned to the user
     const services = await serviceModel.find({
       assigned: {

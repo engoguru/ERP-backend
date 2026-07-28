@@ -590,6 +590,7 @@ export const generatePremiumCard = async (user, customId) => {
   ctx.fillText('DELHI SEMINAR 2026', W / 2, 293);
   ctx.letterSpacing = '0px';
 
+  
   ctx.font = 'italic 12px "Cormorant Garamond", Georgia, serif';
   ctx.fillStyle = '#8090a0';
   ctx.fillText('Empowering NGOs · Strengthening Communities', W / 2, 313);
