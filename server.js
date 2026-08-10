@@ -60,7 +60,9 @@ const allowedOrigins = [
   "https://ngoguru.in",        // production domain without www
   "https://www.ngoguru.in",    // production domain with www
   "https://ngoguru.info",      // main production domain
-  "https://www.ngoguru.info"   // www production domain
+  "https://www.ngoguru.info"  , // www production domain
+  "https://ngoguru.org",
+  "https://www.ngoguru.org"
 ];
 
 app.use(cors({
