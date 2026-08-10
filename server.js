@@ -36,7 +36,8 @@ import sncServiceRouter from "./routes/snc/sncservice.routes.js";
 import proposalRoutes from "./routes/snc/sncproposal.routes.js";
 import paymentRoute from "./routes/snc/sncpayment.routes.js";
 import routerData from "./routes/dataentry.routes.js";
-
+import NgoOrg from "./models/ngoOrg.model.js";
+import crypto from "crypto";
 dotenv.config();
 
 const app = express();
@@ -139,6 +140,215 @@ app.use("/api/payment",paymentRoute)
 app.use("/api/data",routerData)
 // ────────── ERROR HANDLER ──────────
 app.use(errorHandler);
+
+// payu
+
+
+
+const PAYU_KEY = process.env.PAYU_KEY;
+const PAYU_SALT = process.env.PAYU_SALT;
+console.log(PAYU_KEY,PAYU_SALT)
+const PAYU_PAYMENT_URL = "https://secure.payu.in/_payment";
+// const PAYU_PAYMENT_URL = "https://test.payu.in/_payment";
+
+/**
+ * Generate PayU request hash
+ *
+ * key|txnid|amount|productinfo|firstname|email|
+ * udf1|udf2|udf3|udf4|udf5||||||SALT
+ */
+function generateHash(params) {
+  const hashString =
+    `${params.key}|` +
+    `${params.txnid}|` +
+    `${params.amount}|` +
+    `${params.productinfo}|` +
+    `${params.firstname}|` +
+    `${params.email}|` +
+    `${params.udf1 || ""}|` +
+    `${params.udf2 || ""}|` +
+    `${params.udf3 || ""}|` +
+    `${params.udf4 || ""}|` +
+    `${params.udf5 || ""}` +
+    `||||||${PAYU_SALT}`;
+
+  return crypto
+    .createHash("sha512")
+    .update(hashString)
+    .digest("hex");
+}
+
+/**
+ * Create PayU payment
+ */
+
+app.post("/ngo-org/formData", async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      ngoName,
+    } = req.body;
+
+    // Validation
+    if (!name || !email || !phone || !ngoName) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // Create NGO/Organization
+    // NgoOrg
+    const ngoOrg = await NgoOrg.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      ngoName: ngoName.trim(),
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "NGO/Organization saved successfully",
+      data: ngoOrg,
+    });
+  } catch (error) {
+    console.error("NGO Org Create Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+});
+
+
+
+
+app.post("/payment/create", async (req, res) => {
+  console.log("PAYMENT CREATE HIT");
+  console.log("Request body:", req.body);
+   try {
+    const {
+      amount,
+      productInfo,
+      firstname,
+      email,
+      phone,
+      ngoId,
+    } = req.body;
+
+    if (
+      !amount ||
+      !productInfo ||
+      !firstname ||
+      !email ||
+      !phone
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required payment details",
+      });
+    }
+
+    const txnid =
+      "TXN_" +
+      Date.now() +
+      "_" +
+      crypto.randomBytes(4).toString("hex");
+
+    const paymentData = {
+      key: process.env.PAYU_KEY,
+
+      txnid,
+
+      amount: Number(amount).toFixed(2),
+
+      productinfo: productInfo,
+
+      firstname,
+
+      email,
+
+      phone,
+
+      udf1: ngoId || "",
+      udf2: "",
+      udf3: "",
+      udf4: "",
+      udf5: "",
+
+      /*
+       * These must eventually be publicly accessible
+       * for PayU to redirect/callback.
+       */
+      surl:
+        `${process.env.BACKEND_URL}/api/payment/success`,
+
+      furl:
+        `${process.env.BACKEND_URL}/api/payment/failure`,
+    };
+
+    console.log("Payment data before hash:", {
+      ...paymentData,
+      key: "***",
+    });
+
+    paymentData.hash = generateHash(paymentData);
+
+    console.log("Transaction ID:", txnid);
+
+    return res.status(200).json({
+      success: true,
+      paymentUrl: PAYU_PAYMENT_URL,
+      paymentData,
+    });
+  } catch (error) {
+    console.error("PAYU CREATE ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to create payment",
+    });
+  }
+});
+/**
+ * PayU redirects here after successful payment.
+ */
+app.post("/api/payment/success", (req, res) => {
+  console.log("PAYU SUCCESS");
+  console.log(req.body);
+
+  // IMPORTANT:
+  // Verify the response hash and transaction details
+  // before marking your order as paid.
+
+  res.redirect(
+    `${process.env.FRONTEND_URL}/payment-success?txnid=${encodeURIComponent(
+      req.body.txnid || ""
+    )}`
+  );
+});
+
+/**
+ * PayU redirects here after failed payment.
+ */
+app.post("/api/payment/failure", (req, res) => {
+  console.log("PAYU FAILURE");
+  console.log(req.body);
+
+  res.redirect(
+    `${process.env.FRONTEND_URL}/payment-failure?txnid=${encodeURIComponent(
+      req.body.txnid || ""
+    )}`
+  );
+});
+
+
+
+//payu
 
 // ────────── EXPORT APP FOR TESTING ──────────
 export default app;

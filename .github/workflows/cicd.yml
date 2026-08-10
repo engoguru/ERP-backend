@@ -130,4 +130,6 @@ jobs:
           -e PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }} \
           -e PINECONE_INDEX=${{ secrets.PINECONE_INDEX }} \
           -e Meta_Token=${{secrets.Meta_Token}} \
+          -e PAYU_KEY=${{secrets.PAYU_KEY}} \
+          -e PAYU_SALT=${{secrets.PAYU_SALT}} \
           ${{ secrets.DOCKER_USERNAME }}/erp-backend:${{ github.sha }}
