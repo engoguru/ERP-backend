@@ -1024,7 +1024,7 @@ const getISTDayRangeUTC = () => {
 
 export const loginEmployee = async (req, res) => {
   try {
-    const { email, contact, licenseId } = req.body;
+    const { email,contact,licenseId,password } = req.body;
 
     // Step 1: Check required fields
     if (!email || !contact || !licenseId) {
@@ -1035,7 +1035,11 @@ export const loginEmployee = async (req, res) => {
     }
 
     // Step 2: Verify role assignment
-    const verifyRole = await Role.findOne({ email, phone: contact });
+    const verifyRole = await Role.findOne({
+       email,
+      phone: contact ,
+      password:password
+      });
     if (!verifyRole) {
       return res.status(404).json({
         success: false,
