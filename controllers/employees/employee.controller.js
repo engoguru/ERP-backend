@@ -292,7 +292,7 @@ if (user?.roleID) {
 
 
     // ----------  UPDATE EMPLOYEE ----------
-    console.log(req.body, "gerui")
+    // console.log(req.body, "gerui")
     const updatedEmployee = await EmployeeModel.findByIdAndUpdate(
       employeeId,
       req.body, // same as create, directly $set req.body
@@ -311,7 +311,7 @@ if (user?.roleID) {
       data: updatedEmployee,
     });
   } catch (error) {
-    console.error("UPDATE ERROR 👉", error);
+    console.error("UPDATE ERROR ", error);
 
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
@@ -1047,6 +1047,7 @@ export const loginEmployee = async (req, res) => {
     const checkEmployee = await EmployeeModel.findOne({
       roleID: verifyRole._id,
       licenseId: verifyRole.licenseId,
+      status: "ACTIVE",
     });
 
     if (!checkEmployee) {
