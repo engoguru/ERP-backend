@@ -153,7 +153,7 @@ export const leadCreateInside = async (req, res, next) => {
 
     // 1. Clean and normalize the phone number immediately
     let phone = req.body.Contact;
-    if (!phone) { 
+    if (!phone) {
       const error = new Error("Phone number is required");
       error.statusCode = 400;
       return next(error);
@@ -162,7 +162,7 @@ export const leadCreateInside = async (req, res, next) => {
     // Strip everything except digits and force last 10 digits
     // Also trim any potential whitespace from the input string
     const last10 = phone.toString().trim().replace(/\D/g, "").slice(-10);
-    
+
     if (last10.length < 10) {
       const error = new Error("Invalid phone number. Must have at least 10 digits.");
       error.statusCode = 400;
@@ -1125,7 +1125,7 @@ export const leadDashboard = async (req, res) => {
       1
     );
 
-    const [totalleads, monthlyleads, roleWise,sourceWise] = await Promise.all([
+    const [totalleads, monthlyleads, roleWise, sourceWise] = await Promise.all([
       // Total Leads
       leadModel.countDocuments({ licenseId }),
 
@@ -1174,45 +1174,45 @@ export const leadDashboard = async (req, res) => {
         },
       ]),
 
-     leadModel.aggregate([
-  {
-    $group: {
-      _id: { $toLower: "$source" },
-      count: { $sum: 1 },
-      confirmed: {
-        $sum: {
-          $cond: [{ $eq: ["$fields.status", "Confirmed"] }, 1, 0]
+      leadModel.aggregate([
+        {
+          $group: {
+            _id: { $toLower: "$source" },
+            count: { $sum: 1 },
+            confirmed: {
+              $sum: {
+                $cond: [{ $eq: ["$fields.status", "Confirmed"] }, 1, 0]
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            source: "$_id",
+            count: 1,
+            confirmed: 1,
+            conversionRate: {
+              $cond: [
+                { $gt: ["$count", 0] },
+                {
+                  $multiply: [
+                    { $divide: ["$confirmed", "$count"] },
+                    100
+                  ]
+                },
+                0
+              ]
+            }
+          }
+        },
+        {
+          $sort: {
+            count: -1
+          }
         }
-      }
-    }
-  },
-  {
-    $project: {
-      source: "$_id",
-      count: 1,
-      confirmed: 1,
-      conversionRate: {
-        $cond: [
-          { $gt: ["$count", 0] },
-          {
-            $multiply: [
-              { $divide: ["$confirmed", "$count"] },
-              100
-            ]
-          },
-          0
-        ]
-      }
-    }
-  },
-  {
-    $sort: {
-      count: -1
-    }
-  }
-])
+      ])
     ]);
-// console.log(sourceWise)
+    // console.log(sourceWise)
     // console.log(roleWise,totalleads,monthlyleads)
     return res.status(200).json({
       success: true,
@@ -1641,26 +1641,230 @@ export const updateConfirmedService = async (req, res) => {
   }
 };
 
+//lead Activity
+export const leadActivity = async (req, res) => {
+  try {
+    const { employeeId, currentEvent } = req.query;
 
+    // console.log("query:", req.query);
+    // console.log("user:", req.user);
 
+    let id = employeeId;
+  // department: 'Business Development',
+    // Business Development user can only see their own leads
+    if (req.user.department === 'Business Development') {
+      id = req.user.id;
+    }
+
+    // Base match
+    const baseMatch = {};
+
+    // currentEvent/source is optional
+    if (currentEvent) {
+      baseMatch["fields.source"] = currentEvent;
+    }
+
+    let result;
+
+    // ==========================================
+    // EMPLOYEE / BUSINESS DEVELOPMENT
+    // ==========================================
+    if (id) {
+      const currentUserId = new mongoose.Types.ObjectId(id);
+
+      result = await leadModel.aggregate([
+        {
+          $match: baseMatch,
+        },
+
+        {
+          $addFields: {
+            lastAssignedTo: {
+              $arrayElemAt: ["$whoAssignedwho.assignedTo", -1],
+            },
+
+            currentStatus: {
+              $arrayElemAt: ["$statusRecord.status", -1],
+            },
+          },
+        },
+
+        // Only selected employee's leads
+        {
+          $match: {
+            lastAssignedTo: currentUserId,
+          },
+        },
+
+        {
+          $facet: {
+            untouched: [
+              {
+                $match: {
+                  $or: [
+                    { statusRecord: { $size: 0 } },
+                    { statusRecord: { $exists: false } },
+                  ],
+                },
+              },
+            ],
+
+            notConnected: [
+              {
+                $match: {
+                  currentStatus: "Not Connected",
+                },
+              },
+            ],
+
+            interested: [
+              {
+                $match: {
+                  currentStatus: "Interested",
+                },
+              },
+            ],
+
+            confirmed: [
+              {
+                $match: {
+                  currentStatus: "Confirmed",
+                },
+              },
+            ],
+
+            dump: [
+              {
+                $match: {
+                  currentStatus: "Dump",
+                },
+              },
+            ],
+          },
+        },
+      ]);
+    }
+
+    // ==========================================
+    // ADMIN
+    // ==========================================
+    else if (req.user.department === "Admin") {
+      result = await leadModel.aggregate([
+        {
+          $match: baseMatch,
+        },
+
+        {
+          $addFields: {
+            lastAssignedTo: {
+              $arrayElemAt: ["$whoAssignedwho.assignedTo", -1],
+            },
+
+            currentStatus: {
+              $arrayElemAt: ["$statusRecord.status", -1],
+            },
+          },
+        },
+
+        {
+          $group: {
+            _id: "$lastAssignedTo",
+
+            total: {
+              $sum: 1,
+            },
+
+            confirmed: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$currentStatus", "Confirmed"] },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            notConnected: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$currentStatus", "Not Connected"] },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            interested: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$currentStatus", "Interested"] },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            dump: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$currentStatus", "Dump"] },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+
+        {
+          $sort: {
+            total: -1,
+          },
+        },
+      ]);
+    }
+
+    // ==========================================
+    // UNAUTHORIZED
+    // ==========================================
+    else {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized department",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("leadActivity error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
 // mark the Attendace 
 
 export const leadAttendance = async (req, res) => {
   try {
 
     const { id } = req.params
-    const { status} = req.body
+    const { status } = req.body
     const userId = req.user?.id;
     if (!isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid lead ID" })
     }
-    if(!status){
+    if (!status) {
       return res.status(400).json({ message: "Status is required" })
     }
     const leadData = await leadModel.findOne({ _id: id })
     if (!leadData) return res.status(404).json({ message: "Lead not found" })
     leadData.attendance.status = status
-    leadData.attendance.submittedBy = userId 
+    leadData.attendance.submittedBy = userId
     leadData.attendance.submittedAt = new Date()
     await leadData.save()
     return res.status(200).json({
@@ -1676,3 +1880,95 @@ export const leadAttendance = async (req, res) => {
     });
   }
 }
+
+
+// All lead load 
+import { Parser } from "json2csv";
+
+export const allLead = async (req, res) => {
+  // try {
+  //   const leads = await leadModel
+  //     .find({}, { fields: 1, _id: 0 })
+  //     .lean();
+
+  //   if (!leads.length) {
+  //     return res.status(404).json({
+  //       success: false,
+  //       message: "No leads found",
+  //     });
+  //   }
+
+  //   const fieldNames = [
+  //     "Name",
+  //     "Email",
+  //     "Contact",
+  //     "description",
+  //     "city",
+  //     "state",
+  //     "ngoName",
+  //     "status",
+  //     "source",
+  //   ];
+
+  //   // Sirf required fields nikalna
+  //   const data = leads.map((lead) => {
+  //     const fields = lead.fields || {};
+
+  //     return {
+  //       Name: fields.Name || "",
+  //       Email: fields.Email || "",
+  //       Contact: fields.Contact || "",
+  //       description: fields.description || "",
+  //       city: fields.city || "",
+  //       state: fields.state || "",
+  //       ngoName: fields.ngoName || "",
+  //       status: fields.status || "",
+  //       source: fields.source || "",
+  //     };
+  //   });
+
+  //   const parser = new Parser({
+  //     fields: fieldNames,
+  //   });
+
+  //   const csv = parser.parse(data);
+
+  //   res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  //   res.setHeader(
+  //     "Content-Disposition",
+  //     'attachment; filename="leads.csv"'
+  //   );
+
+  //   return res.send(csv);
+  // } catch (error) {
+  //   console.error(error);
+
+  //   return res.status(500).json({
+  //     success: false,
+  //     message: "Failed to export leads",
+  //     error: error.message,
+  //   });
+  // }
+
+
+
+  try {
+    const result = await leadModel.deleteMany({
+      "fields.source": { $ne: "Hyderabad Seminar 2" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "All leads deleted except Hyderabad Seminar 2",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete leads",
+      error: error.message,
+    });
+  }
+};
