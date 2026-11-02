@@ -65,6 +65,7 @@ const allowedOrigins = [
   "https://www.ngoguru.org",
   "http://ngoguru.coach",
   "https://ngoguru.coach",
+
   "https://www.ngoguru.coach"
 ];
 
@@ -83,8 +84,7 @@ app.use(cors({
 }));
 // app.use(cors({
 //   origin: function (origin, callback) {
-//     if (!origin) return callback(null, true);
-
+//     if (!origin) return callback(null, true)git 
 //     if (allowedOrigins.includes(origin)) {
 //       return callback(null, true);
 //     }
