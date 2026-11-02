@@ -23,7 +23,7 @@ import startPayrollWorker from "./workers/payroll.worker.js";
 
 // import "./jobs/payroll.job.js"
 import { startPayrollCron } from "./jobs/payroll.job.js";
-import{startActiveUser} from "./jobs/active.user.js"
+import { startActiveUser } from "./jobs/active.user.js"
 import Issueroute from "./routes/employees/issue.routes.js";
 import chatRoute from "./routes/chatbot.routes.js";
 import Roleroute from "./routes/role.routes.js";
@@ -60,9 +60,12 @@ const allowedOrigins = [
   "https://ngoguru.in",        // production domain without www
   "https://www.ngoguru.in",    // production domain with www
   "https://ngoguru.info",      // main production domain
-  "https://www.ngoguru.info"  , // www production domain
+  "https://www.ngoguru.info", // www production domain
   "https://ngoguru.org",
-  "https://www.ngoguru.org"
+  "https://www.ngoguru.org",
+  "http://ngoguru.coach",
+  "https://ngoguru.coach",
+  "https://www.ngoguru.coach"
 ];
 
 app.use(cors({
@@ -100,13 +103,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // ────────── ROUTES ──────────
 app.get("/health", (req, res) => {
-    res.send("Hello! I am fit.");
+  res.send("Hello! I am fit.");
 });
 
-app.use("/api/companyRegister",companyRoutes)
+app.use("/api/companyRegister", companyRoutes)
 
 app.use("/api/license", licenseRoutes);
-app.use("/api/companyConfigure",   companyConfigureRoutes);
+app.use("/api/companyConfigure", companyConfigureRoutes);
 app.use("/api/lead", leadRoute);
 app.use("/api/leaves", leavesRoute);
 app.use("/api/payroll", payrollRoute);
@@ -114,32 +117,32 @@ app.use("/api/attendance", attendanceRoute);
 app.use("/api/event", eventRoute);
 app.use("/api/employee", employeeRoute);
 
-app.use("/api/issue",Issueroute)
+app.use("/api/issue", Issueroute)
 
-app.use("/api/ip",ipRoutes)
-
-
-app.use("/api/role",Roleroute)
-app.use("/api/department",departmentRoute)
-
-app.use("/api/chat",chatRoute)
-
-app.use("/api/id",idRouter)
-
-app.use("/api/treat",reTreatRoute)
-
-app.use("/api/service",serviceAddRoute)
-
-app.use("/api/sncregister",sncregisterRouter)
-
-app.use("/api/sncService",sncServiceRouter)
-
-app.use("/api/sncProposal",proposalRoutes)
-
-app.use("/api/payment",paymentRoute)
+app.use("/api/ip", ipRoutes)
 
 
-app.use("/api/data",routerData)
+app.use("/api/role", Roleroute)
+app.use("/api/department", departmentRoute)
+
+app.use("/api/chat", chatRoute)
+
+app.use("/api/id", idRouter)
+
+app.use("/api/treat", reTreatRoute)
+
+app.use("/api/service", serviceAddRoute)
+
+app.use("/api/sncregister", sncregisterRouter)
+
+app.use("/api/sncService", sncServiceRouter)
+
+app.use("/api/sncProposal", proposalRoutes)
+
+app.use("/api/payment", paymentRoute)
+
+
+app.use("/api/data", routerData)
 // ────────── ERROR HANDLER ──────────
 app.use(errorHandler);
 
@@ -149,7 +152,7 @@ app.use(errorHandler);
 
 const PAYU_KEY = process.env.PAYU_KEY;
 const PAYU_SALT = process.env.PAYU_SALT;
-console.log(PAYU_KEY,PAYU_SALT)
+console.log(PAYU_KEY, PAYU_SALT)
 const PAYU_PAYMENT_URL = "https://secure.payu.in/_payment";
 // const PAYU_PAYMENT_URL = "https://test.payu.in/_payment";
 
@@ -232,7 +235,7 @@ app.post("/ngo-org/formData", async (req, res) => {
 app.post("/payment/create", async (req, res) => {
   console.log("PAYMENT CREATE HIT");
   console.log("Request body:", req.body);
-   try {
+  try {
     const {
       amount,
       productInfo,
